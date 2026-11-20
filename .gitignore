@@ -1,0 +1,19 @@
+# macOS / Xcode
+.DS_Store
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# XcodeGen 生成物（不要提交，CI 会现场生成）
+KanAV.xcodeproj/
+*.xcodeproj/
+!project.yml
+
+# 构建产物
+Payload/
+*.ipa
+*.dSYM
+build.log
+checksum.txt
