@@ -1,0 +1,110 @@
+# XcodeGen 工程描述文件
+# 用法：brew install xcodegen && xcodegen generate
+# 说明：真正被 Xcode 打开的是 xcodegen 生成出来的 KanAV.xcodeproj（不入库）
+name: KanAV
+options:
+  bundleIdPrefix: com.kanav
+  deploymentTarget:
+    iOS: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+  defaultConfig: Release
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "15.0"
+    ENABLE_BITCODE: NO
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    CLANG_WARN_DOCUMENTATION_COMMENTS: NO
+    CODE_SIGN_STYLE: Automatic
+    # 本工程以"未签名"方式打包，签名相关变量仅在本地真机调试时由 Xcode 覆盖
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  KanAV:
+    type: application
+    platform: iOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: KanAV/Sources
+      - path: KanAV/Resources
+    settings:
+      base:
+        PRODUCT_NAME: KanAV
+        PRODUCT_BUNDLE_IDENTIFIER: com.kanav.webapp
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        GENERATE_INFOPLIST_FILE: NO
+        ALWAYS_SEARCH_USER_PATHS: NO
+        SUPPORTS_UIKITFORMAC: NO
+    info:
+      path: KanAV/Info.plist
+      properties:
+        CFBundleDisplayName: KanAV
+        CFBundleName: KanAV
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: zh_CN
+        CFBundleLocalizations:
+          - zh-Hans
+          - zh-Hant
+          - en
+        CFBundlePackageType: APPL
+        LSRequiresIPhoneOS: true
+        UIApplicationSupportsIndirectInputEvents: true
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIRequiresFullScreen: false
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+          UISceneConfigurations:
+            UIWindowSceneSessionRoleApplication:
+              - UISceneConfigurationName: Default Configuration
+                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsArbitraryLoadsInWebContent: true
+          NSAllowsLocalNetworking: true
+        ITSAppUsesNonExemptEncryption: false
+        UIBackgroundModes:
+          - audio
+        NSCameraUsageDescription: 用于网页内拍照、扫码或上传内容
+        NSMicrophoneUsageDescription: 用于网页内录音或语音输入
+        NSPhotoLibraryAddUsageDescription: 用于把网页中的图片保存到相册
+        NSPhotoLibraryUsageDescription: 用于从相册选择图片上传到网页
+        NSFaceIDUsageDescription: 用于网页内可能出现的生物识别登录
+        UIRequiredDeviceCapabilities:
+          - arm64
+
+schemes:
+  KanAV:
+    build:
+      targets:
+        KanAV: all
+    run:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
