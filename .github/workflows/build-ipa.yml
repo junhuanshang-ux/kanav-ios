@@ -98,8 +98,8 @@ jobs:
         run: |
           set -o pipefail
           if [ "${{ steps.whisper.outputs.enabled }}" = "true" ]; then
-            WFLAGS="-framework whisper"
-            echo "whisper.cpp 已链接"
+            WFLAGS="-framework whisper -framework CoreML -framework Accelerate -framework Metal -lc++"
+            echo "whisper.cpp 已链接（含 CoreML 编码器）"
           else
             WFLAGS=""
             echo "whisper.cpp 未编译成功，使用系统识别兜底"
