@@ -72,17 +72,20 @@ jobs:
           FW_DIR="$GITHUB_WORKSPACE/Frameworks"
           mkdir -p "$FW_DIR"
           echo "--- xcframework 内容 ---"
-          ls -1 build-apple/whisper.xcframework
+          ls -1 build-apple/whisper.xcframework || true
 
-          # 取真机 slice（ios-arm64），链接时 -framework 只认扁平的 whisper.framework
-          SLICE=$(find build-apple/whisper.xcframework -maxdepth 2 -name "whisper.framework" -type d | grep -v simulator | head -n1)
-          echo "slice: $SLICE"
-          test -n "$SLICE"
+          # 直接取脚本构建出的 iOS 真机产物，避免误抓到 tvOS / macOS slice
+          SLICE="build-ios-device/framework/whisper.framework"
+          test -d "$SLICE"
+          rm -rf "$FW_DIR/whisper.framework"
           cp -R "$SLICE" "$FW_DIR/whisper.framework"
 
           echo "--- 产物 ---"
           ls -R "$FW_DIR/whisper.framework" | head -30
-          file "$FW_DIR/whisper.framework/whisper" || true
+          file "$FW_DIR/whisper.framework/whisper"
+          if file "$FW_DIR/whisper.framework/whisper" | grep -qiE "tvos|watchos|macos|visionos"; then
+            echo "slice 平台不对"; exit 1
+          fi
           echo "enabled=true" >> "$GITHUB_OUTPUT"
 
       - name: Generate Xcode project
