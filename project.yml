@@ -74,12 +74,6 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        UIApplicationSceneManifest:
-          UIApplicationSupportsMultipleScenes: false
-          UISceneConfigurations:
-            UIWindowSceneSessionRoleApplication:
-              - UISceneConfigurationName: Default Configuration
-                UISceneDelegateClassName: $(PRODUCT_MODULE_NAME).SceneDelegate
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true
           NSAllowsArbitraryLoadsInWebContent: true

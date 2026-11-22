@@ -17,3 +17,6 @@ Payload/
 *.dSYM
 build.log
 checksum.txt
+
+# 本地凭据
+.gh_token
