@@ -4,6 +4,8 @@ import SwiftUI
 @main
 struct KanAVApp: App {
 
+    @UIApplicationDelegateAdaptor(OrientationDelegate.self) private var orientationDelegate
+
     init() {
         // 视频站：静音键打开也要出声，并支持后台/画中画音频
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
