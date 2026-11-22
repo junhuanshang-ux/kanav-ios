@@ -3,9 +3,9 @@ import Foundation
 #if canImport(Translation)
 import Translation
 
-/// 端上翻译（iOS 17.4+，Translation framework）。
+/// 端上翻译（iOS 18+，Translation framework）。
 /// TranslationSession 只能从 SwiftUI 的 .translationTask 里拿到，所以单独包一层。
-@available(iOS 17.4, *)
+@available(iOS 18.0, *)
 final class SystemTranslationBridge {
 
     static let shared = SystemTranslationBridge()
@@ -60,7 +60,7 @@ final class Translator {
     }
 
     var hasAnyBackend: Bool {
-        if #available(iOS 17.4, *) {
+        if #available(iOS 18.0, *) {
             #if canImport(Translation)
             return true
             #endif
@@ -75,7 +75,7 @@ final class Translator {
         guard !trimmed.isEmpty else { return nil }
 
         #if canImport(Translation)
-        if #available(iOS 17.4, *) {
+        if #available(iOS 18.0, *) {
             if let result = await SystemTranslationBridge.shared.translate(trimmed) {
                 return result
             }

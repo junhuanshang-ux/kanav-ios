@@ -256,8 +256,11 @@ final class PlayerEngine: NSObject, ObservableObject {
         observers.append(item.observe(\.status, options: [.new, .initial]) { [weak self] observed, _ in
             DispatchQueue.main.async {
                 guard let self = self else { return }
-                if observed.status == .readyToPlay, let seconds = observed.duration.seconds, seconds.isFinite, seconds > 0 {
-                    self.duration = seconds
+                if observed.status == .readyToPlay {
+                    let seconds = observed.duration.seconds
+                    if seconds.isFinite, seconds > 0 {
+                        self.duration = seconds
+                    }
                 }
                 self.refreshState()
             }
@@ -342,7 +345,8 @@ final class PlayerEngine: NSObject, ObservableObject {
         case .unknown:
             state = .loading
         case .readyToPlay:
-            if let seconds = item.duration.seconds, seconds.isFinite, seconds > 0 {
+            let seconds = item.duration.seconds
+            if seconds.isFinite, seconds > 0 {
                 duration = seconds
             }
             if item.isPlaybackBufferEmpty && player.timeControlStatus != .paused {

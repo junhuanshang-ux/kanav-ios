@@ -1,6 +1,10 @@
 import AVFoundation
 import SwiftUI
 
+#if canImport(Translation)
+import Translation
+#endif
+
 struct PlayerScreen: View {
 
     let item: VideoItem
@@ -39,7 +43,7 @@ struct PlayerScreen: View {
     var body: some View {
         Group {
             #if canImport(Translation)
-            if #available(iOS 17.4, *) {
+            if #available(iOS 18.0, *) {
                 content
                     .translationTask(
                         TranslationSession.Configuration(

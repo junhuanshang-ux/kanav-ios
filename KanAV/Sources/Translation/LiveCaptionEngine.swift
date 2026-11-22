@@ -50,8 +50,8 @@ final class LiveCaptionEngine: ObservableObject {
 
         guard let speech = SpeechRecognizerService(
             languageCode: sourceLanguage,
-            onSegment: { [weak self] text in
-                self?.handle(text)
+            onSegment: { [weak self] segment in
+                self?.handle(segment.text)
             },
             onError: { [weak self] message in
                 self?.status = message
