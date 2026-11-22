@@ -25,17 +25,28 @@ final class WhisperEngine {
         self.language = language
 
         #if canImport(whisper)
-        var params = whisper_context_default_params()
-        params.use_gpu = true
-        let created = modelPath.withCString { pointer in
-            whisper_init_from_file_with_params(pointer, params)
+        // 先试 Metal（快），失败再退回纯 CPU，避免 GPU 初始化失败就整个不可用
+        if let created = Self.makeContext(modelPath: modelPath, useGPU: true) {
+            context = created
+        } else if let created = Self.makeContext(modelPath: modelPath, useGPU: false) {
+            context = created
+        } else {
+            return nil
         }
-        guard let created = created else { return nil }
-        context = created
         #else
         return nil
         #endif
     }
+
+    #if canImport(whisper)
+    private static func makeContext(modelPath: String, useGPU: Bool) -> OpaquePointer? {
+        var params = whisper_context_default_params()
+        params.use_gpu = useGPU
+        return modelPath.withCString { pointer in
+            whisper_init_from_file_with_params(pointer, params)
+        }
+    }
+    #endif
 
     deinit {
         #if canImport(whisper)

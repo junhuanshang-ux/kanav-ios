@@ -75,11 +75,6 @@ struct PlayerScreen: View {
                 scheduleHideControls()
             }
         }
-        .onChange(of: captions.status) { text in
-            if !text.isEmpty {
-                showToast(text)
-            }
-        }
     }
 
     private var content: some View {
@@ -258,20 +253,31 @@ struct PlayerScreen: View {
     // MARK: 字幕 / Toast
 
     @ViewBuilder private var captionOverlay: some View {
-        if captions.isRunning, let caption = captions.liveCaption, !caption.source.isEmpty {
+        if captions.isRunning {
             VStack {
                 Spacer()
-                VStack(spacing: 3) {
-                    Text(caption.target.isEmpty ? caption.source : caption.target)
-                        .font(.system(size: isFullscreen ? 19 : 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                    if !caption.target.isEmpty {
-                        Text(caption.source)
-                            .font(.system(size: isFullscreen ? 12 : 11))
-                            .foregroundColor(.white.opacity(0.65))
+                VStack(spacing: 4) {
+                    if let caption = captions.liveCaption, !caption.source.isEmpty {
+                        Text(caption.target.isEmpty ? caption.source : caption.target)
+                            .font(.system(size: isFullscreen ? 19 : 15, weight: .semibold))
+                            .foregroundColor(.white)
                             .multilineTextAlignment(.center)
+                        if !caption.target.isEmpty {
+                            Text(caption.source)
+                                .font(.system(size: isFullscreen ? 12 : 11))
+                                .foregroundColor(.white.opacity(0.65))
+                                .multilineTextAlignment(.center)
+                        }
+                    } else {
+                        Text("字幕准备中…")
+                            .font(.system(size: isFullscreen ? 15 : 12, weight: .medium))
+                            .foregroundColor(.white.opacity(0.75))
                     }
+
+                    Text(captions.status)
+                        .font(.system(size: 10))
+                        .foregroundColor(.white.opacity(0.45))
+                        .lineLimit(1)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)

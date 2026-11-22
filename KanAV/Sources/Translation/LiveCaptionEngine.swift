@@ -73,6 +73,11 @@ final class LiveCaptionEngine: ObservableObject {
         }
 
         let source = HLSAudioSource(playlistURL: streamURL)
+        source.onStage = { [weak self] stage in
+            DispatchQueue.main.async {
+                self?.status = stage
+            }
+        }
         audioSource = source
         source.start(fromSeconds: fromSeconds) { [weak self] samples in
             self?.consume(samples)
@@ -80,10 +85,10 @@ final class LiveCaptionEngine: ObservableObject {
 
         isRunning = true
         if whisper != nil {
-            status = "Whisper 实时字幕已开启（延迟约 10 秒）"
+            status = "Whisper 已开启，正在取音频…"
         } else {
             speech?.start()
-            status = "实时字幕已开启（系统识别兜底）"
+            status = "系统识别已开启，正在取音频…"
         }
     }
 
