@@ -48,11 +48,16 @@ struct CategoryFeed: View {
     let category: Category
 
     @StateObject private var model: FeedViewModel
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 10),
-        GridItem(.flexible(), spacing: 10)
-    ]
+    private var columns: [GridItem] {
+        let count = sizeClass == .regular ? 3 : 2
+        return Array(repeating: GridItem(.flexible(), spacing: 10), count: count)
+    }
+
+    private var coverHeight: CGFloat {
+        sizeClass == .regular ? 160 : 112
+    }
 
     init(category: Category) {
         self.category = category
@@ -64,7 +69,7 @@ struct CategoryFeed: View {
             LazyVGrid(columns: columns, spacing: 14) {
                 ForEach(model.items) { item in
                     NavigationLink(destination: PlayerScreen(item: item)) {
-                        VideoCard(item: item)
+                        VideoCard(item: item, coverHeight: coverHeight)
                     }
                     .buttonStyle(.plain)
                     .onAppear {

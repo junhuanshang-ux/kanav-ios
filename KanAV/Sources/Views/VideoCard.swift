@@ -1,8 +1,10 @@
 import SwiftUI
 
-/// 封面卡片。16:9 横图 + 右下角时长 + 两行标题。
+/// 封面卡片。封面高度固定，避免不同比例的海报把网格撑得参差不齐。
 struct VideoCard: View {
+
     let item: VideoItem
+    var coverHeight: CGFloat = 112
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -18,10 +20,12 @@ struct VideoCard: View {
 
     private var coverFrame: some View {
         ZStack {
+            Color.kanCard
             cover
         }
-        .aspectRatio(16.0 / 9.0, contentMode: .fit)
         .frame(maxWidth: .infinity)
+        .frame(height: coverHeight)
+        .clipped()
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
@@ -34,17 +38,18 @@ struct VideoCard: View {
 
     @ViewBuilder private var cover: some View {
         if let url = item.coverURL {
-            AsyncImage(url: url, transaction: Transaction(animation: .easeInOut(duration: 0.15))) { phase in
+            AsyncImage(url: url, transaction: Transaction(animation: nil)) { phase in
                 switch phase {
                 case .success(let image):
-                    image.resizable().scaledToFill()
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
                 case .failure:
                     placeholder
                 case .empty:
-                    ZStack {
-                        Color.kanCard
-                        ProgressView().tint(.gray)
-                    }
+                    ProgressView().tint(.gray)
                 @unknown default:
                     placeholder
                 }
@@ -55,12 +60,9 @@ struct VideoCard: View {
     }
 
     private var placeholder: some View {
-        ZStack {
-            Color.kanCard
-            Image(systemName: "film")
-                .font(.system(size: 20))
-                .foregroundColor(Color.white.opacity(0.25))
-        }
+        Image(systemName: "film")
+            .font(.system(size: 20))
+            .foregroundColor(Color.white.opacity(0.25))
     }
 
     @ViewBuilder private var durationBadge: some View {
@@ -77,7 +79,7 @@ struct VideoCard: View {
     }
 }
 
-/// 抽屉里用的小行视图（最近观看列表）。
+/// 列表行（最近观看）。
 struct VideoRow: View {
     let item: VideoItem
 
@@ -86,7 +88,7 @@ struct VideoRow: View {
             ZStack {
                 Color.kanCard
                 if let url = item.coverURL {
-                    AsyncImage(url: url) { phase in
+                    AsyncImage(url: url, transaction: Transaction(animation: nil)) { phase in
                         if case .success(let image) = phase {
                             image.resizable().scaledToFill()
                         } else {
@@ -96,6 +98,7 @@ struct VideoRow: View {
                 }
             }
             .frame(width: 96, height: 54)
+            .clipped()
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {

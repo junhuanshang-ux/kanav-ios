@@ -22,6 +22,7 @@ struct PlayerScreen: View {
     @State private var hud: PlayerHUDKind?
     @State private var isResolving = true
     @State private var resolveError: String?
+    @State private var streamURL: URL?
     @State private var hideWork: DispatchWorkItem?
     @State private var toast: String?
 
@@ -85,27 +86,30 @@ struct PlayerScreen: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                playerArea
-                if !isFullscreen {
-                    embeddedInfo
+            GeometryReader { proxy in
+                VStack(spacing: 0) {
+                    playerArea(width: proxy.size.width)
+                    if !isFullscreen {
+                        embeddedInfo
+                    }
                 }
             }
-
-            captionOverlay
-            toastOverlay
         }
+        .overlay(captionOverlay)
+        .overlay(toastOverlay)
     }
 
     // MARK: 播放器区域
 
-    private var playerArea: some View {
+    /// 这里故意不用 aspectRatio：全屏时 `aspectRatio(nil, .fill)` 会把浮层算进布局，
+    /// 结果就是全屏后控制面板消失、退不出来。改成显式宽高，浮层永远贴在播放器上。
+    private func playerArea(width: CGFloat) -> some View {
         baseLayer
+            .frame(width: width, height: isFullscreen ? nil : width * 9.0 / 16.0)
+            .frame(maxHeight: isFullscreen ? .infinity : nil)
             .overlay(hudOverlay)
             .overlay(controlsOverlay)
             .overlay(backOverlay)
-            .aspectRatio(isFullscreen ? nil : 16.0 / 9.0, contentMode: isFullscreen ? .fill : .fit)
-            .frame(maxWidth: .infinity, maxHeight: isFullscreen ? .infinity : nil)
             .background(Color.black)
     }
 
@@ -151,7 +155,9 @@ struct PlayerScreen: View {
                 onBack: handleBack,
                 onToggleFullscreen: toggleFullscreen,
                 onToggleCaptions: {
-                    Task { await captions.toggle(engine: engine) }
+                    Task {
+                        await captions.toggle(streamURL: streamURL, fromSeconds: engine.currentTime)
+                    }
                 }
             )
             .opacity(controlsVisible ? 1 : 0)
@@ -372,16 +378,19 @@ struct PlayerScreen: View {
     private func resolve(_ target: VideoItem) async {
         isResolving = true
         resolveError = nil
+        captions.stop()
 
         do {
             let html = try await Net.html(path: target.playPath)
             guard let source = Parser.playSource(from: html, fallbackTitle: target.title) else {
                 throw KanError.noPlayURL
             }
+            streamURL = source.url
             engine.load(url: source.url, autoplay: true)
             isResolving = false
             showControls()
         } catch let error {
+            streamURL = nil
             resolveError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             isResolving = false
         }
