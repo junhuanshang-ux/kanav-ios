@@ -61,20 +61,29 @@ jobs:
         id: whisper
         continue-on-error: true
         run: |
-          set -x
+          set -e
           brew install cmake || true
           git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git /tmp/whisper.cpp
           cd /tmp/whisper.cpp
-          if [ -x ./build-xcframework.sh ]; then
-            ./build-xcframework.sh
-          else
-            echo "build-xcframework.sh not found"
-            exit 1
-          fi
-          mkdir -p "$GITHUB_WORKSPACE/Frameworks"
-          cp -R build-apple/whisper.xcframework "$GITHUB_WORKSPACE/Frameworks/"
+
+          # 静态打包：直接链进主二进制，不需要 embed、不引入 rpath
+          BUILD_STATIC_XCFRAMEWORK=ON ./build-xcframework.sh
+
+          FW_DIR="$GITHUB_WORKSPACE/Frameworks"
+          mkdir -p "$FW_DIR"
+          echo "--- xcframework 内容 ---"
+          ls -1 build-apple/whisper.xcframework
+
+          # 取真机 slice（ios-arm64），链接时 -framework 只认扁平的 whisper.framework
+          SLICE=$(find build-apple/whisper.xcframework -maxdepth 2 -name "whisper.framework" -type d | grep -v simulator | head -n1)
+          echo "slice: $SLICE"
+          test -n "$SLICE"
+          cp -R "$SLICE" "$FW_DIR/whisper.framework"
+
+          echo "--- 产物 ---"
+          ls -R "$FW_DIR/whisper.framework" | head -30
+          file "$FW_DIR/whisper.framework/whisper" || true
           echo "enabled=true" >> "$GITHUB_OUTPUT"
-          du -sh "$GITHUB_WORKSPACE/Frameworks/whisper.xcframework"
 
       - name: Generate Xcode project
         run: |
