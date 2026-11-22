@@ -85,12 +85,9 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UIBackgroundModes:
           - audio
-        NSCameraUsageDescription: 用于网页内拍照、扫码或上传内容
-        NSMicrophoneUsageDescription: 用于网页内录音或语音输入
         NSSpeechRecognitionUsageDescription: 用于生成实时字幕并翻译成中文，音频只在设备本地处理
-        NSPhotoLibraryAddUsageDescription: 用于把网页中的图片保存到相册
-        NSPhotoLibraryUsageDescription: 用于从相册选择图片上传到网页
-        NSFaceIDUsageDescription: 用于网页内可能出现的生物识别登录
+        NSFaceIDUsageDescription: 用于解锁「博客」，验证身份后才能查看观看记录
+        NSPhotoLibraryAddUsageDescription: 用于把封面图片保存到相册
         UIRequiredDeviceCapabilities:
           - arm64
 
