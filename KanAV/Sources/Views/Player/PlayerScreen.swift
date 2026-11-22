@@ -100,9 +100,24 @@ struct PlayerScreen: View {
     // MARK: 播放器区域
 
     private var playerArea: some View {
+        baseLayer
+            .overlay(hudOverlay)
+            .overlay(controlsOverlay)
+            .overlay(backOverlay)
+            .aspectRatio(isFullscreen ? nil : 16.0 / 9.0, contentMode: isFullscreen ? .fill : .fit)
+            .frame(maxWidth: .infinity, maxHeight: isFullscreen ? .infinity : nil)
+            .background(Color.black)
+    }
+
+    private var baseLayer: some View {
         ZStack {
             PlayerSurface(player: engine.player, gravity: engine.gravity) { layer in
                 pip.attach(layer: layer)
+            }
+            // 关键：禁止 SwiftUI 对 AVPlayerLayer 做尺寸动画，否则点屏幕会“忽大忽小”
+            .transaction { transaction in
+                transaction.animation = nil
+                transaction.disablesAnimations = true
             }
 
             PlayerGestureLayer(engine: engine, hud: $hud) {
@@ -113,35 +128,60 @@ struct PlayerScreen: View {
                 loadingOverlay
             } else if let message = resolveError {
                 failureOverlay(message)
-            } else {
-                if engine.state.isBusy {
-                    bufferingBadge
-                }
-
-                if controlsVisible {
-                    PlayerControls(
-                        engine: engine,
-                        pip: pip,
-                        title: activeItem.title,
-                        isFullscreen: isFullscreen,
-                        captionsOn: captions.isRunning,
-                        onBack: handleBack,
-                        onToggleFullscreen: toggleFullscreen,
-                        onToggleCaptions: {
-                            Task { await captions.toggle(engine: engine) }
-                        }
-                    )
-                    .transition(.opacity)
-                }
-
-                if let hud = hud {
-                    PlayerHUDView(hud: hud)
-                }
+            } else if engine.state.isBusy {
+                bufferingBadge
             }
         }
-        .aspectRatio(isFullscreen ? nil : 16.0 / 9.0, contentMode: isFullscreen ? .fill : .fit)
-        .frame(maxWidth: .infinity, maxHeight: isFullscreen ? .infinity : nil)
-        .background(Color.black)
+    }
+
+    @ViewBuilder private var hudOverlay: some View {
+        if let hud = hud {
+            PlayerHUDView(hud: hud)
+        }
+    }
+
+    @ViewBuilder private var controlsOverlay: some View {
+        if !isResolving, resolveError == nil {
+            PlayerControls(
+                engine: engine,
+                pip: pip,
+                title: activeItem.title,
+                isFullscreen: isFullscreen,
+                captionsOn: captions.isRunning,
+                onBack: handleBack,
+                onToggleFullscreen: toggleFullscreen,
+                onToggleCaptions: {
+                    Task { await captions.toggle(engine: engine) }
+                }
+            )
+            .opacity(controlsVisible ? 1 : 0)
+            .allowsHitTesting(controlsVisible)
+        }
+    }
+
+    /// 面板自动隐藏后，左上角始终留一个返回热区
+    @ViewBuilder private var backOverlay: some View {
+        if !controlsVisible, !isResolving, resolveError == nil {
+            VStack {
+                HStack {
+                    Button {
+                        handleBack()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Circle().fill(Color.black.opacity(0.45)))
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer(minLength: 0)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .transition(.opacity)
+        }
     }
 
     private var loadingOverlay: some View {
@@ -168,14 +208,25 @@ struct PlayerScreen: View {
                     .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
-                Button("重试") {
-                    Task { await resolve(activeItem) }
+                HStack(spacing: 12) {
+                    Button("重试") {
+                        Task { await resolve(activeItem) }
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.kanAccent))
+
+                    Button("返回") {
+                        handleBack()
+                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.white.opacity(0.14)))
                 }
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.white)
-                .padding(.horizontal, 22)
-                .padding(.vertical, 8)
-                .background(Capsule().fill(Color.kanAccent))
             }
         }
     }
@@ -206,10 +257,10 @@ struct PlayerScreen: View {
                 Spacer()
                 VStack(spacing: 3) {
                     Text(caption.target.isEmpty ? caption.source : caption.target)
-                        .font(.system(size: isFullscreen ? 18 : 15, weight: .semibold))
+                        .font(.system(size: isFullscreen ? 19 : 15, weight: .semibold))
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                    if captions.showTranslation && !caption.target.isEmpty {
+                    if !caption.target.isEmpty {
                         Text(caption.source)
                             .font(.system(size: isFullscreen ? 12 : 11))
                             .foregroundColor(.white.opacity(0.65))
@@ -240,7 +291,6 @@ struct PlayerScreen: View {
                     .cornerRadius(16)
                 Spacer()
             }
-            .transition(.opacity)
             .allowsHitTesting(false)
         }
     }
@@ -261,7 +311,7 @@ struct PlayerScreen: View {
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
                         if captions.isRunning {
-                            Text("实时字幕 ON")
+                            Text("实时字幕 · \(captions.engineName)")
                                 .font(.system(size: 10, weight: .semibold))
                                 .foregroundColor(Color.kanAccent)
                         }
@@ -356,18 +406,14 @@ struct PlayerScreen: View {
     }
 
     private func toggleControls() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            controlsVisible.toggle()
-        }
+        controlsVisible.toggle()
         if controlsVisible {
             scheduleHideControls()
         }
     }
 
     private func showControls() {
-        withAnimation(.easeInOut(duration: 0.2)) {
-            controlsVisible = true
-        }
+        controlsVisible = true
         scheduleHideControls()
     }
 
@@ -375,12 +421,10 @@ struct PlayerScreen: View {
         hideWork?.cancel()
         guard engine.state.isPlaying else { return }
         let work = DispatchWorkItem {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                controlsVisible = false
-            }
+            controlsVisible = false
         }
         hideWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: work)
     }
 
     private func showToast(_ text: String) {

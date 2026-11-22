@@ -1,5 +1,5 @@
 # Generates the AppIcon PNG set from a procedurally drawn 1024px master.
-# Usage: pwsh -File tools/make_icons.ps1
+# Podcast-style mark: purple gradient + white dot with three expanding arcs.
 Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path -Parent $PSScriptRoot
@@ -12,28 +12,43 @@ $g = [System.Drawing.Graphics]::FromImage($bmp)
 $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
 
+# 背景：紫罗兰渐变
 $rect = New-Object System.Drawing.Rectangle(0, 0, $master, $master)
-$colTop = [System.Drawing.Color]::FromArgb(255, 255, 51, 102)
-$colBottom = [System.Drawing.Color]::FromArgb(255, 26, 6, 24)
-$gradient = New-Object System.Drawing.Drawing2D.LinearGradientBrush($rect, $colTop, $colBottom, 65.0)
+$colTop = [System.Drawing.Color]::FromArgb(255, 186, 88, 240)
+$colBottom = [System.Drawing.Color]::FromArgb(255, 96, 32, 200)
+$gradient = New-Object System.Drawing.Drawing2D.LinearGradientBrush($rect, $colTop, $colBottom, 90.0)
 $g.FillRectangle($gradient, $rect)
 
-# soft vignette
+# 轻微径向高光
 $vignette = New-Object System.Drawing.Drawing2D.GraphicsPath
-$vignette.AddEllipse(220, 220, 1608, 1608)
+$vignette.AddEllipse(300, 240, 1448, 1448)
 $vBrush = New-Object System.Drawing.Drawing2D.PathGradientBrush($vignette)
-$vBrush.CenterColor = [System.Drawing.Color]::FromArgb(40, 255, 255, 255)
-$vBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 0, 0, 0))
+$vBrush.CenterColor = [System.Drawing.Color]::FromArgb(46, 255, 255, 255)
+$vBrush.SurroundColors = @([System.Drawing.Color]::FromArgb(0, 255, 255, 255))
 $g.FillPath($vBrush, $vignette)
 
-# play triangle, optically centred
-$white = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 255, 255, 255))
-$triangle = [System.Drawing.PointF[]]@(
-  (New-Object System.Drawing.PointF(790, 660)),
-  (New-Object System.Drawing.PointF(790, 1388)),
-  (New-Object System.Drawing.PointF(1416, 1024))
+# 图形：一个圆点 + 三道向下张开的同心弧
+$cx = 1024
+$cy = 780
+$white = [System.Drawing.Color]::FromArgb(255, 255, 255, 255)
+
+$dotBrush = New-Object System.Drawing.SolidBrush($white)
+$g.FillEllipse($dotBrush, ($cx - 74), ($cy - 74), 148, 148)
+
+$arcs = @(
+  @{ Radius = 250; Width = 68 },
+  @{ Radius = 432; Width = 68 },
+  @{ Radius = 614; Width = 68 }
 )
-$g.FillPolygon($white, $triangle)
+foreach ($arc in $arcs) {
+    $r = $arc.Radius
+    $pen = New-Object System.Drawing.Pen($white, $arc.Width)
+    $pen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $pen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $bounds = New-Object System.Drawing.Rectangle(($cx - $r), ($cy - $r), (2 * $r), (2 * $r))
+    $g.DrawArc($pen, $bounds, 18, 144)
+    $pen.Dispose()
+}
 
 $g.Dispose()
 

@@ -45,10 +45,14 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ALWAYS_SEARCH_USER_PATHS: NO
         SUPPORTS_UIKITFORMAC: NO
+        # whisper.xcframework 由 CI 现场编译后放到 Frameworks/，本地没有则不链接
+        FRAMEWORK_SEARCH_PATHS:
+          - $(inherited)
+          - $(SRCROOT)/Frameworks
     info:
       path: KanAV/Info.plist
       properties:
-        CFBundleDisplayName: KanAV
+        CFBundleDisplayName: 博客
         CFBundleName: KanAV
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)

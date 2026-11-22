@@ -44,10 +44,11 @@ struct PlayerControls: View {
         HStack(spacing: 10) {
             Button(action: onBack) {
                 Image(systemName: isFullscreen ? "chevron.down" : "chevron.left")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
-                    .frame(width: 34, height: 34)
-                    .contentShape(Rectangle())
+                    .frame(width: 36, height: 36)
+                    .background(Circle().fill(Color.black.opacity(0.38)))
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
 

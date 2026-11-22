@@ -2,7 +2,7 @@ name: Build IPA
 
 # 触发方式：
 #   1) push 到 main/master
-#   2) 打 tag（v1.0.1 这种）→ 除了 artifact，还会自动挂到 Release
+#   2) 打 tag（v1.0.7 这种）→ 除了 artifact，还会自动挂到 Release
 #   3) 手动点击 Actions → Build IPA → Run workflow
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
   build:
     name: Build unsigned IPA
     runs-on: macos-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -56,6 +56,26 @@ jobs:
           brew install xcodegen
           xcodegen --version
 
+      # whisper.cpp 现场编译成 xcframework；失败不影响主流程，App 自动回退到系统识别
+      - name: Build whisper.cpp xcframework
+        id: whisper
+        continue-on-error: true
+        run: |
+          set -x
+          brew install cmake || true
+          git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git /tmp/whisper.cpp
+          cd /tmp/whisper.cpp
+          if [ -x ./build-xcframework.sh ]; then
+            ./build-xcframework.sh
+          else
+            echo "build-xcframework.sh not found"
+            exit 1
+          fi
+          mkdir -p "$GITHUB_WORKSPACE/Frameworks"
+          cp -R build-apple/whisper.xcframework "$GITHUB_WORKSPACE/Frameworks/"
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          du -sh "$GITHUB_WORKSPACE/Frameworks/whisper.xcframework"
+
       - name: Generate Xcode project
         run: |
           xcodegen generate --spec project.yml --project .
@@ -65,6 +85,13 @@ jobs:
       - name: Build app (unsigned)
         run: |
           set -o pipefail
+          if [ "${{ steps.whisper.outputs.enabled }}" = "true" ]; then
+            WFLAGS="-framework whisper"
+            echo "whisper.cpp 已链接"
+          else
+            WFLAGS=""
+            echo "whisper.cpp 未编译成功，使用系统识别兜底"
+          fi
           xcodebuild \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
@@ -74,6 +101,7 @@ jobs:
             -derivedDataPath build \
             MARKETING_VERSION="${{ steps.ver.outputs.version }}" \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            OTHER_LDFLAGS="$WFLAGS" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
@@ -93,8 +121,6 @@ jobs:
           rm -rf Payload "${APP_NAME}-unsigned.ipa"
           mkdir -p Payload
           cp -R "$APP_PATH" "Payload/${APP_NAME}.app"
-
-          # 未签名包里不应该留签名残留，顺手清掉 Mac 扩展属性
           rm -rf "Payload/${APP_NAME}.app/_CodeSignature"
           xattr -cr "Payload/${APP_NAME}.app" || true
 
@@ -102,9 +128,7 @@ jobs:
           rm -rf Payload
 
           ls -lh "${APP_NAME}-unsigned.ipa"
-          echo "--- ipa 结构 ---"
           unzip -l "${APP_NAME}-unsigned.ipa" | head -n 25
-          echo "--- sha256 ---"
           shasum -a 256 "${APP_NAME}-unsigned.ipa" | tee checksum.txt
 
       - name: Upload IPA artifact

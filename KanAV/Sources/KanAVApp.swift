@@ -22,25 +22,41 @@ struct KanAVApp: App {
 }
 
 struct RootView: View {
+
+    @ObservedObject private var lock = AppLock.shared
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
-        TabView {
-            NavigationView {
-                HomeView()
-            }
-            .navigationViewStyle(StackNavigationViewStyle())
-            .tabItem { Label("发现", systemImage: "play.rectangle.fill") }
+        ZStack {
+            TabView {
+                NavigationView {
+                    HomeView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+                .tabItem { Label("发现", systemImage: "play.rectangle.fill") }
 
-            NavigationView {
-                SearchView()
-            }
-            .navigationViewStyle(StackNavigationViewStyle())
-            .tabItem { Label("搜索", systemImage: "magnifyingglass") }
+                NavigationView {
+                    SearchView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+                .tabItem { Label("搜索", systemImage: "magnifyingglass") }
 
-            NavigationView {
-                LibraryView()
+                NavigationView {
+                    LibraryView()
+                }
+                .navigationViewStyle(StackNavigationViewStyle())
+                .tabItem { Label("我的", systemImage: "person.crop.circle") }
             }
-            .navigationViewStyle(StackNavigationViewStyle())
-            .tabItem { Label("最近", systemImage: "clock.arrow.circlepath") }
+
+            if lock.isLocked {
+                LockScreen()
+                    .transition(.opacity)
+            }
+        }
+        .onChange(of: scenePhase) { phase in
+            if phase == .background {
+                lock.lockIfNeeded()
+            }
         }
     }
 }
