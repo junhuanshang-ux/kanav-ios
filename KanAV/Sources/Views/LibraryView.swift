@@ -6,7 +6,6 @@ struct LibraryView: View {
     @ObservedObject private var lock = AppLock.shared
     @ObservedObject private var fetcher = WebFetcher.shared
     @AppStorage("player.useWeb") private var useWebPlayer = false
-    @AppStorage("player.useProxy") private var useStreamProxy = true
 
     var body: some View {
         ScrollView {
@@ -42,23 +41,6 @@ struct LibraryView: View {
                             Text(useWebPlayer
                                  ? "站点自带播放器，兼容性兜底（控件是网页的）"
                                  : "内置播放器：m3u8 / 分片统一走资源代理带鉴权，支持倍速、手势、比例切换")
-                                .font(.system(size: 11))
-                                .foregroundColor(.gray)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                    .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
-                }
-
-                settingsCard {
-                    Toggle(isOn: $useStreamProxy) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("流代理")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                            Text(useStreamProxy
-                                 ? "m3u8 / 分片统一带鉴权，兼容性更好"
-                                 : "关闭后直连播放（某些片源代理不兼容时用这个）")
                                 .font(.system(size: 11))
                                 .foregroundColor(.gray)
                                 .fixedSize(horizontal: false, vertical: true)

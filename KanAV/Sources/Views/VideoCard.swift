@@ -20,11 +20,11 @@ struct RemoteImage: View {
                 ZStack {
                     Color.kanCard
                     if isLoading {
-                        ProgressView().tint(.gray).scaleEffect(0.8)
+                        ProgressView().tint(Color.kanTextSecondary).scaleEffect(0.8)
                     } else {
                         Image(systemName: "film")
                             .font(.system(size: 20))
-                            .foregroundColor(Color.white.opacity(0.25))
+                            .foregroundColor(Color.white.opacity(0.18))
                     }
                 }
             }
@@ -44,46 +44,58 @@ struct RemoteImage: View {
     }
 }
 
-/// 封面卡片：封面固定高度 + 番号 + 中文标题（自动翻译）。
+/// 封面卡片：固定封面高 + 番号 + 标题（译文浅青色）。
 struct VideoCard: View {
 
     let item: VideoItem
-    var coverHeight: CGFloat = 112
+    var coverHeight: CGFloat = 116
 
     @ObservedObject private var translator = TitleTranslator.shared
+    @State private var pressed = false
 
-    private var displayTitle: String {
-        translator.translated(item.title) ?? item.cleanTitle
-    }
+    private var translated: String? { translator.translated(item.title) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 7) {
             coverFrame
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 if let code = item.code {
                     Text(code)
-                        .font(.system(size: 10, weight: .heavy))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(Color.kanAccent)
                         .lineLimit(1)
                 }
-                Text(displayTitle)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
+
+                Text(translated ?? item.cleanTitle)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundColor(translated == nil ? .white : Color.kanTranslated)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .topLeading)
             }
         }
+        .scaleEffect(pressed ? 0.97 : 1.0)
+        .animation(.easeOut(duration: 0.12), value: pressed)
+        .onLongPressGesture(minimumDuration: .infinity, pressing: { pressing in
+            pressed = pressing
+        }, perform: {})
         .onAppear {
             translator.request(item.title)
         }
     }
 
     private var coverFrame: some View {
-        ZStack {
+        ZStack(alignment: .bottom) {
             Color.kanCard
             RemoteImage(url: item.coverURL)
+            LinearGradient(
+                colors: [.clear, Color.black.opacity(0.55)],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            .frame(height: 44)
+            .allowsHitTesting(false)
         }
         .frame(maxWidth: .infinity)
         .frame(height: coverHeight)
@@ -91,7 +103,7 @@ struct VideoCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                .stroke(Color.white.opacity(0.07), lineWidth: 0.5)
         )
         .overlay(alignment: .bottomTrailing) {
             durationBadge
@@ -103,11 +115,10 @@ struct VideoCard: View {
             Text(item.duration)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.white)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(Color.black.opacity(0.72))
-                .cornerRadius(4)
-                .padding(6)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2.5)
+                .background(Capsule().fill(Color.black.opacity(0.62)))
+                .padding(7)
         }
     }
 }
@@ -118,33 +129,35 @@ struct VideoRow: View {
 
     @ObservedObject private var translator = TitleTranslator.shared
 
-    private var displayTitle: String {
-        translator.translated(item.title) ?? item.cleanTitle
-    }
+    private var translated: String? { translator.translated(item.title) }
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             ZStack {
                 Color.kanCard
                 RemoteImage(url: item.coverURL)
             }
-            .frame(width: 96, height: 54)
+            .frame(width: 104, height: 58)
             .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+            )
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 if let code = item.code {
                     Text(code)
-                        .font(.system(size: 9, weight: .heavy))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundColor(Color.kanAccent)
                 }
-                Text(displayTitle)
+                Text(translated ?? item.cleanTitle)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.white)
+                    .foregroundColor(translated == nil ? .white : Color.kanTranslated)
                     .lineLimit(2)
                 Text(item.subtitle)
                     .font(.system(size: 11))
-                    .foregroundColor(.gray)
+                    .foregroundColor(Color.kanTextSecondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)

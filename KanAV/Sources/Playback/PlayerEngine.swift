@@ -71,8 +71,6 @@ final class PlayerEngine: NSObject, ObservableObject {
 
     private var item: AVPlayerItem?
     private var asset: AVURLAsset?
-    private var proxyLoader: StreamProxyLoader?
-    private let loaderQueue = DispatchQueue(label: "kanav.stream.loader", qos: .userInitiated)
     private var timeObserver: Any?
     private var observers: [NSKeyValueObservation] = []
     private var tokens: [NSObjectProtocol] = []
@@ -92,32 +90,15 @@ final class PlayerEngine: NSObject, ObservableObject {
     func load(url: URL, referer: String? = nil, userAgent: String? = nil, autoplay: Bool = true) {
         teardown()
 
-        let resolvedReferer = referer ?? (Site.base + "/")
-        let resolvedUA = userAgent ?? Site.userAgent
-        let cookie = Net.cookieHeader(for: url)
-
-        // 流代理：接管 m3u8 / 分片 / 密钥，统一带鉴权（Range 越界问题已修）
-        let useProxy = UserDefaults.standard.object(forKey: "player.useProxy") as? Bool ?? true
-        let asset: AVURLAsset
-        if useProxy {
-            let proxyURL = StreamProxyLoader.proxyURL(for: url)
-            let loader = StreamProxyLoader(referer: resolvedReferer, userAgent: resolvedUA, cookie: cookie)
-            let proxyAsset = AVURLAsset(url: proxyURL)
-            proxyAsset.resourceLoader.setDelegate(loader, queue: loaderQueue)
-            self.proxyLoader = loader
-            asset = proxyAsset
-        } else {
-            var headers: [String: String] = [
-                "Referer": resolvedReferer,
-                "User-Agent": resolvedUA,
-                "Accept": "*/*"
-            ]
-            if let cookie = cookie {
-                headers["Cookie"] = cookie
-            }
-            self.proxyLoader = nil
-            asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+        var headers: [String: String] = [
+            "Referer": referer ?? (Site.base + "/"),
+            "User-Agent": userAgent ?? Site.userAgent,
+            "Accept": "*/*"
+        ]
+        if let cookie = Net.cookieHeader(for: url) {
+            headers["Cookie"] = cookie
         }
+        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
         self.asset = asset
 
         let item = AVPlayerItem(asset: asset)
@@ -431,8 +412,6 @@ final class PlayerEngine: NSObject, ObservableObject {
         player.pause()
         player.replaceCurrentItem(with: nil)
         item = nil
-        asset?.resourceLoader.setDelegate(nil, queue: loaderQueue)
-        proxyLoader = nil
         asset = nil
         audioOptions = []
         subtitleOptions = []

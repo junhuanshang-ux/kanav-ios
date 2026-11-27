@@ -20,30 +20,31 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text("博客")
-                    .font(.system(size: 26, weight: .heavy))
+                    .font(.system(size: 28, weight: .heavy))
                     .foregroundColor(.white)
-                Text("4 万部影片 · 每日更新")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color.white.opacity(0.45))
+                    .tracking(0.4)
+                Text("40,179 部影片 · 每日更新")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color.kanTextSecondary)
             }
 
             Spacer(minLength: 0)
 
             NavigationLink(destination: SearchView()) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(.white)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(Color.kanCard))
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(Color.kanSurface))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 6)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
     }
 
     private var categoryBar: some View {
@@ -56,35 +57,36 @@ struct HomeView: View {
                 Button {
                     showCategoryPicker = true
                 } label: {
-                    HStack(spacing: 4) {
-                        Text("更多")
-                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                    HStack(spacing: 5) {
+                        Text("全部")
+                        Image(systemName: "square.grid.2x2.fill").font(.system(size: 10))
                     }
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(Color.white.opacity(0.7))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(Capsule().fill(Color.kanCard))
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(Color.kanTextSecondary)
+                    .padding(.horizontal, 15)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.kanSurface))
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
         }
     }
 
     private func categoryChip(_ category: Category) -> some View {
-        Button {
-            guard selected.id != category.id else { return }
+        let active = selected.id == category.id
+        return Button {
+            guard !active else { return }
             selected = category
         } label: {
             Text(category.name)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(selected.id == category.id ? .white : Color.white.opacity(0.55))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
+                .font(.system(size: 13, weight: active ? .bold : .medium))
+                .foregroundColor(active ? .white : Color.kanTextSecondary)
+                .padding(.horizontal, 15)
+                .padding(.vertical, 8)
                 .background(
-                    Capsule().fill(selected.id == category.id ? Color.kanAccent : Color.kanCard)
+                    Capsule().fill(active ? Color.kanAccent : Color.kanSurface)
                 )
         }
         .buttonStyle(.plain)
@@ -158,11 +160,11 @@ struct CategoryFeed: View {
 
     private var columns: [GridItem] {
         let count = sizeClass == .regular ? 3 : 2
-        return Array(repeating: GridItem(.flexible(), spacing: 10), count: count)
+        return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
     }
 
     private var coverHeight: CGFloat {
-        sizeClass == .regular ? 160 : 112
+        sizeClass == .regular ? 168 : 116
     }
 
     init(category: Category) {
@@ -172,7 +174,7 @@ struct CategoryFeed: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 14) {
+            LazyVGrid(columns: columns, spacing: 18) {
                 ForEach(model.items) { item in
                     NavigationLink(destination: PlayerScreen(item: item)) {
                         VideoCard(item: item, coverHeight: coverHeight)
@@ -185,8 +187,8 @@ struct CategoryFeed: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
 
             footer
         }

@@ -84,6 +84,10 @@ struct PlayerGestureLayer: View {
     @State private var baseBrightness: CGFloat = 0.5
     @State private var baseVolume: Float = 0.5
 
+    /// 长按快进
+    @State private var isBoosting = false
+    @State private var savedSpeed: Double = 1.0
+
     var body: some View {
         GeometryReader { geo in
             ZStack {
@@ -92,12 +96,43 @@ struct PlayerGestureLayer: View {
                     .gesture(dragGesture(size: geo.size))
                     .onTapGesture { onSingleTap() }
 
+                // 右半屏长按 → 临时 2 倍速
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .frame(width: geo.size.width / 2)
+                        .onLongPressGesture(minimumDuration: 0.4, maximumDistance: 24) {
+                            startBoost()
+                        } onPressingChanged: { pressing in
+                            if !pressing {
+                                endBoost()
+                            }
+                        }
+                }
+
                 VolumeHostView()
                     .frame(width: 1, height: 1)
                     .opacity(0.01)
                     .allowsHitTesting(false)
             }
         }
+    }
+
+    private func startBoost() {
+        guard !isBoosting else { return }
+        savedSpeed = engine.speed
+        isBoosting = true
+        engine.setSpeed(2.0)
+
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+    }
+
+    private func endBoost() {
+        guard isBoosting else { return }
+        isBoosting = false
+        engine.setSpeed(savedSpeed)
     }
 
     private func dragGesture(size: CGSize) -> some Gesture {

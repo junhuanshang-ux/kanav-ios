@@ -66,7 +66,16 @@ struct RootView: View {
 // MARK: - 主题
 
 extension Color {
-    static let kanAccent = Color(red: 1.0, green: 0.18, blue: 0.33)
-    static let kanBackground = Color(red: 0.05, green: 0.05, blue: 0.07)
-    static let kanCard = Color(red: 0.11, green: 0.11, blue: 0.13)
+    /// 强调色（番号、选中态、进度条）
+    static let kanAccent = Color(red: 1.0, green: 0.23, blue: 0.36)
+    /// 页面底色
+    static let kanBackground = Color(red: 0.04, green: 0.04, blue: 0.05)
+    /// 卡片 / 封面底
+    static let kanCard = Color(red: 0.10, green: 0.10, blue: 0.12)
+    /// 胶囊、按钮底
+    static let kanSurface = Color(red: 0.13, green: 0.13, blue: 0.16)
+    /// 次级文字
+    static let kanTextSecondary = Color(white: 0.60)
+    /// 译文专用的浅青色，和原文区分开
+    static let kanTranslated = Color(red: 0.42, green: 0.84, blue: 1.0)
 }

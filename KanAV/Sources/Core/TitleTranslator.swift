@@ -60,33 +60,47 @@ final class TitleTranslator: ObservableObject {
     }
 
     private static func fetch(_ text: String) async -> String? {
-        var components = URLComponents(string: "https://translate.googleapis.com/translate_a/single")
-        components?.queryItems = [
-            URLQueryItem(name: "client", value: "gtx"),
-            URLQueryItem(name: "sl", value: "auto"),
-            URLQueryItem(name: "tl", value: "zh-CN"),
-            URLQueryItem(name: "dt", value: "t"),
-            URLQueryItem(name: "q", value: text)
+        let endpoints = [
+            "https://translate.googleapis.com/translate_a/single",
+            "https://translate.google.com/translate_a/single",
+            "https://clients5.google.com/translate_a/single"
         ]
-        guard let url = components?.url else { return nil }
 
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 12
-        request.setValue(Site.userAgent, forHTTPHeaderField: "User-Agent")
+        for endpoint in endpoints {
+            guard var components = URLComponents(string: endpoint) else { continue }
+            components.queryItems = [
+                URLQueryItem(name: "client", value: "gtx"),
+                URLQueryItem(name: "sl", value: "auto"),
+                URLQueryItem(name: "tl", value: "zh-CN"),
+                URLQueryItem(name: "dt", value: "t"),
+                URLQueryItem(name: "q", value: text)
+            ]
+            guard let url = components.url else { continue }
 
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [Any],
-              let segments = json.first as? [Any]
-        else { return nil }
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 10
+            request.setValue(Site.userAgent, forHTTPHeaderField: "User-Agent")
+            request.setValue("https://jable.tv/", forHTTPHeaderField: "Referer")
+            request.setValue("application/json, text/plain, */*", forHTTPHeaderField: "Accept")
 
-        var result = ""
-        for segment in segments {
-            if let parts = segment as? [Any], let piece = parts.first as? String {
-                result += piece
+            guard let (data, response) = try? await URLSession.shared.data(for: request),
+                  let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [Any],
+                  let segments = json.first as? [Any]
+            else { continue }
+
+            var result = ""
+            for segment in segments {
+                if let parts = segment as? [Any], let piece = parts.first as? String {
+                    result += piece
+                }
+            }
+            let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
             }
         }
-        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+        return nil
     }
 }
