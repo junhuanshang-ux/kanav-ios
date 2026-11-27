@@ -115,7 +115,7 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
                     loadingRequest.dataRequest?.respond(with: body)
                     if let info = loadingRequest.contentInformationRequest {
                         info.contentType = self.bestContentType(
-                            allowed: info.allowedContentTypes,
+                            allowed: info.allowedContentTypes ?? [],
                             serverMIME: "application/vnd.apple.mpegurl"
                         )
                         info.contentLength = Int64(body.count)
@@ -143,7 +143,7 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
 
                 if let info = loadingRequest.contentInformationRequest {
                     info.contentType = self.bestContentType(
-                        allowed: info.allowedContentTypes,
+                        allowed: info.allowedContentTypes ?? [],
                         serverMIME: http.value(forHTTPHeaderField: "Content-Type")
                     )
                     info.contentLength = Int64(slice.count)
