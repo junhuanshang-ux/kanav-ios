@@ -128,15 +128,18 @@ struct PlayerControls: View {
                 )
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        // 底部菜单不做全透明，加一层半透明深色底，亮画面下时间和按钮才看得清
+        .padding(.horizontal, 12)
+        .padding(.top, 28)
+        .padding(.bottom, 10)
+        // 底部整条渐变铺满：任何画面亮度下时间和按钮都清晰，也不会显得「时有时无」
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.black.opacity(0.45))
+            LinearGradient(
+                colors: [Color.black.opacity(0.0), Color.black.opacity(0.55), Color.black.opacity(0.82)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .allowsHitTesting(false)
         )
-        .padding(.horizontal, 8)
-        .padding(.bottom, 6)
     }
 
     private var progressBar: some View {
