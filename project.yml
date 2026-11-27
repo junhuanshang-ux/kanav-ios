@@ -45,10 +45,6 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ALWAYS_SEARCH_USER_PATHS: NO
         SUPPORTS_UIKITFORMAC: NO
-        # whisper.xcframework 由 CI 现场编译后放到 Frameworks/，本地没有则不链接
-        FRAMEWORK_SEARCH_PATHS:
-          - $(inherited)
-          - $(SRCROOT)/Frameworks
     info:
       path: KanAV/Info.plist
       properties:
@@ -85,7 +81,6 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         UIBackgroundModes:
           - audio
-        NSSpeechRecognitionUsageDescription: 用于生成实时字幕并翻译成中文，音频只在设备本地处理
         NSFaceIDUsageDescription: 用于解锁「博客」，验证身份后才能查看观看记录
         NSPhotoLibraryAddUsageDescription: 用于把封面图片保存到相册
         UIRequiredDeviceCapabilities:

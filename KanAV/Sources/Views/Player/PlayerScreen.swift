@@ -1,10 +1,6 @@
 import AVFoundation
 import SwiftUI
 
-#if canImport(Translation)
-import Translation
-#endif
-
 struct PlayerScreen: View {
 
     let item: VideoItem
@@ -13,7 +9,6 @@ struct PlayerScreen: View {
 
     @StateObject private var engine = PlayerEngine()
     @StateObject private var pip = PiPManager()
-    @StateObject private var captions = LiveCaptionEngine()
     @ObservedObject private var history = HistoryStore.shared
 
     @State private var activeItem: VideoItem
@@ -24,7 +19,6 @@ struct PlayerScreen: View {
     @State private var resolveError: String?
     @State private var streamURL: URL?
     @State private var hideWork: DispatchWorkItem?
-    @State private var toast: String?
 
     @Environment(\.presentationMode) private var presentationMode
 
@@ -42,39 +36,21 @@ struct PlayerScreen: View {
     // MARK: Body
 
     var body: some View {
-        Group {
-            #if canImport(Translation)
-            if #available(iOS 18.0, *) {
-                content
-                    .translationTask(
-                        TranslationSession.Configuration(
-                            source: Locale.Language(identifier: "ja"),
-                            target: Locale.Language(identifier: "zh-Hans")
-                        )
-                    ) { session in
-                        SystemTranslationBridge.shared.attach(session)
-                    }
-            } else {
-                content
+        content
+            .navigationBarHidden(isFullscreen)
+            .statusBar(hidden: isFullscreen)
+            .background(Color.black.ignoresSafeArea())
+            .onAppear(perform: handleAppear)
+            .onDisappear(perform: handleDisappear)
+            .task {
+                await resolve(activeItem)
             }
-            #else
-            content
-            #endif
-        }
-        .navigationBarHidden(isFullscreen)
-        .statusBar(hidden: isFullscreen)
-        .background(Color.black.ignoresSafeArea())
-        .onAppear(perform: handleAppear)
-        .onDisappear(perform: handleDisappear)
-        .task {
-            await resolve(activeItem)
-        }
-        .onChange(of: engine.state) { newState in
-            onStateChange?(newState)
-            if newState.isPlaying {
-                scheduleHideControls()
+            .onChange(of: engine.state) { newState in
+                onStateChange?(newState)
+                if newState.isPlaying {
+                    scheduleHideControls()
+                }
             }
-        }
     }
 
     private var content: some View {
@@ -90,14 +66,12 @@ struct PlayerScreen: View {
                 }
             }
         }
-        .overlay(captionOverlay)
-        .overlay(toastOverlay)
     }
 
     // MARK: 播放器区域
 
-    /// 这里故意不用 aspectRatio：全屏时 `aspectRatio(nil, .fill)` 会把浮层算进布局，
-    /// 结果就是全屏后控制面板消失、退不出来。改成显式宽高，浮层永远贴在播放器上。
+    /// 不用 aspectRatio：全屏时 `aspectRatio(nil, .fill)` 会把浮层算进布局，
+    /// 结果就是全屏后控制面板消失、退不出来。改成显式宽高。
     private func playerArea(width: CGFloat) -> some View {
         baseLayer
             .frame(width: width, height: isFullscreen ? nil : width * 9.0 / 16.0)
@@ -113,7 +87,7 @@ struct PlayerScreen: View {
             PlayerSurface(player: engine.player, gravity: engine.gravity) { layer in
                 pip.attach(layer: layer)
             }
-            // 关键：禁止 SwiftUI 对 AVPlayerLayer 做尺寸动画，否则点屏幕会“忽大忽小”
+            // 禁止 SwiftUI 对 AVPlayerLayer 做尺寸动画，否则点屏幕会「忽大忽小」
             .transaction { transaction in
                 transaction.animation = nil
                 transaction.disablesAnimations = true
@@ -146,14 +120,8 @@ struct PlayerScreen: View {
                 pip: pip,
                 title: activeItem.title,
                 isFullscreen: isFullscreen,
-                captionsOn: captions.isRunning,
                 onBack: handleBack,
-                onToggleFullscreen: toggleFullscreen,
-                onToggleCaptions: {
-                    Task {
-                        await captions.toggle(streamURL: streamURL, fromSeconds: engine.currentTime)
-                    }
-                }
+                onToggleFullscreen: toggleFullscreen
             )
             .opacity(controlsVisible ? 1 : 0)
             .allowsHitTesting(controlsVisible)
@@ -181,7 +149,6 @@ struct PlayerScreen: View {
                 Spacer(minLength: 0)
             }
             .padding(10)
-            .transition(.opacity)
         }
     }
 
@@ -250,63 +217,6 @@ struct PlayerScreen: View {
         .allowsHitTesting(false)
     }
 
-    // MARK: 字幕 / Toast
-
-    @ViewBuilder private var captionOverlay: some View {
-        if captions.isRunning {
-            VStack {
-                Spacer()
-                VStack(spacing: 4) {
-                    if let caption = captions.liveCaption, !caption.source.isEmpty {
-                        Text(caption.target.isEmpty ? caption.source : caption.target)
-                            .font(.system(size: isFullscreen ? 19 : 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                        if !caption.target.isEmpty {
-                            Text(caption.source)
-                                .font(.system(size: isFullscreen ? 12 : 11))
-                                .foregroundColor(.white.opacity(0.65))
-                                .multilineTextAlignment(.center)
-                        }
-                    } else {
-                        Text("字幕准备中…")
-                            .font(.system(size: isFullscreen ? 15 : 12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.75))
-                    }
-
-                    Text(captions.status)
-                        .font(.system(size: 10))
-                        .foregroundColor(.white.opacity(0.45))
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.black.opacity(0.55))
-                .cornerRadius(9)
-                .padding(.horizontal, 24)
-                .padding(.bottom, isFullscreen ? 92 : 16)
-            }
-            .allowsHitTesting(false)
-        }
-    }
-
-    @ViewBuilder private var toastOverlay: some View {
-        if let text = toast {
-            VStack {
-                Spacer().frame(height: 54)
-                Text(text)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Color.black.opacity(0.75))
-                    .cornerRadius(16)
-                Spacer()
-            }
-            .allowsHitTesting(false)
-        }
-    }
-
     // MARK: 内嵌信息区
 
     private var embeddedInfo: some View {
@@ -318,16 +228,9 @@ struct PlayerScreen: View {
                         .foregroundColor(.white)
                         .fixedSize(horizontal: false, vertical: true)
 
-                    HStack(spacing: 10) {
-                        Text(activeItem.subtitle)
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray)
-                        if captions.isRunning {
-                            Text("实时字幕 · \(captions.engineName)")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundColor(Color.kanAccent)
-                        }
-                    }
+                    Text(activeItem.subtitle)
+                        .font(.system(size: 11))
+                        .foregroundColor(.gray)
                 }
 
                 if !history.items.isEmpty {
@@ -365,7 +268,6 @@ struct PlayerScreen: View {
 
     private func handleDisappear() {
         engine.unload()
-        captions.stop()
         pip.stop()
         hideWork?.cancel()
         UIApplication.shared.isIdleTimerDisabled = false
@@ -384,7 +286,6 @@ struct PlayerScreen: View {
     private func resolve(_ target: VideoItem) async {
         isResolving = true
         resolveError = nil
-        captions.stop()
 
         do {
             let html = try await Net.html(path: target.playPath)
@@ -440,17 +341,5 @@ struct PlayerScreen: View {
         }
         hideWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.0, execute: work)
-    }
-
-    private func showToast(_ text: String) {
-        toast = text
-        Task {
-            try? await Task.sleep(nanoseconds: 2_200_000_000)
-            await MainActor.run {
-                if toast == text {
-                    toast = nil
-                }
-            }
-        }
     }
 }

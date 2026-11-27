@@ -8,11 +8,9 @@ struct PlayerControls: View {
 
     let title: String
     let isFullscreen: Bool
-    let captionsOn: Bool
 
     let onBack: () -> Void
     let onToggleFullscreen: () -> Void
-    let onToggleCaptions: () -> Void
 
     @State private var isScrubbing = false
     @State private var scrubTime: Double = 0
@@ -131,7 +129,6 @@ struct PlayerControls: View {
                 gravityButton
                 loopButton
                 trackMenu
-                iconButton("character.bubble", active: captionsOn, action: onToggleCaptions)
                 iconButton(
                     isFullscreen ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
                     action: onToggleFullscreen

@@ -90,10 +90,14 @@ final class PlayerEngine: NSObject, ObservableObject {
     func load(url: URL, autoplay: Bool = true) {
         teardown()
 
-        let headers: [String: String] = [
+        var headers: [String: String] = [
             "Referer": Site.base + "/",
             "User-Agent": Site.userAgent
         ]
+        // jable 的 m3u8 需要过 CF 后的 cookie
+        if let cookie = Net.cookieHeader(for: url) {
+            headers["Cookie"] = cookie
+        }
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
         self.asset = asset
 
@@ -207,28 +211,6 @@ final class PlayerEngine: NSObject, ObservableObject {
         guard let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) else { return }
         item.select(option?.option, in: group)
         selectedSubtitleID = option?.id
-    }
-
-    // MARK: 音频管线（实时字幕用）
-
-    func primaryAudioTrackID() async -> CMPersistentTrackID? {
-        guard let asset = asset else { return nil }
-        let tracks = (try? await asset.loadTracks(withMediaType: .audio)) ?? []
-        return tracks.first?.trackID
-    }
-
-    func installAudioMix(trackID: CMPersistentTrackID, tap: MTAudioProcessingTap) {
-        guard let item = item else { return }
-        let parameters = AVMutableAudioMixInputParameters()
-        parameters.trackID = trackID
-        parameters.audioTapProcessor = tap
-        let mix = AVMutableAudioMix()
-        mix.inputParameters = [parameters]
-        item.audioMix = mix
-    }
-
-    func removeAudioMix() {
-        item?.audioMix = nil
     }
 
     // MARK: 内部

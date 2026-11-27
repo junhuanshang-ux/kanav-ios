@@ -4,7 +4,6 @@ struct LibraryView: View {
 
     @ObservedObject private var store = HistoryStore.shared
     @ObservedObject private var lock = AppLock.shared
-    @ObservedObject private var models = WhisperModelStore.shared
 
     var body: some View {
         ScrollView {
@@ -48,70 +47,22 @@ struct LibraryView: View {
                     .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
                 }
 
-                sectionTitle("实时字幕")
+                sectionTitle("关于")
 
                 settingsCard {
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("Whisper.cpp 模型")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                            Spacer()
-                            Text(models.isDownloaded ? models.sizeText : "未下载")
-                                .font(.system(size: 11))
-                                .foregroundColor(.gray)
-                        }
-
-                        if models.isDownloading {
-                            ProgressView(value: models.progress)
-                                .tint(Color.kanAccent)
-                            Text("下载中 \(Int(models.progress * 100))%")
-                                .font(.system(size: 11))
-                                .foregroundColor(.gray)
-                        } else if let error = models.errorText {
-                            Text(error)
-                                .font(.system(size: 11))
-                                .foregroundColor(.orange)
-                                .fixedSize(horizontal: false, vertical: true)
-                        } else {
-                            Text(WhisperEngine.isSupported
-                                 ? "base-q5_1 · 本地推理，音频不出设备"
-                                 : "当前构建不含 whisper.cpp，会回退系统识别")
-                                .font(.system(size: 11))
-                                .foregroundColor(.gray)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-
-                        if models.isDownloaded {
-                            Button {
-                                models.removeModel()
-                            } label: {
-                                actionLabel("删除模型", filled: false)
-                            }
-                            .buttonStyle(.plain)
-                        } else if models.isDownloading {
-                            Button {
-                                models.cancel()
-                            } label: {
-                                actionLabel("取消下载", filled: false)
-                            }
-                            .buttonStyle(.plain)
-                        } else {
-                            Button {
-                                models.download()
-                            } label: {
-                                actionLabel("下载模型（\(WhisperModelStore.approximateSize)）", filled: true)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("博客")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                        Text("数据来源 \(Site.base)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                        Text("播放器使用系统 AVPlayer，支持 HLS / 多音轨 / 内嵌字幕 / 画中画。")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
-
-                Text("播放页控制条右侧的气泡按钮开关实时字幕：优先用 Whisper 本地推理，模型缺失时回退系统语音识别。")
-                    .font(.system(size: 11))
-                    .foregroundColor(Color.white.opacity(0.45))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
             }
             .padding(14)
         }
@@ -159,16 +110,5 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.kanCard)
             .cornerRadius(12)
-    }
-
-    private func actionLabel(_ title: String, filled: Bool) -> some View {
-        Text(title)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(
-                Capsule().fill(filled ? Color.kanAccent : Color.white.opacity(0.12))
-            )
     }
 }

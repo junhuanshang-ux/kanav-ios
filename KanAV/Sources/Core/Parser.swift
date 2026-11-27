@@ -1,10 +1,10 @@
 import Foundation
 
-/// 站点没有开放 JSON 接口，全部靠 HTML 解析。
-/// 解析规则集中在这里，模板一改只需要动这个文件。
+/// jable 的模板会变，所以解析不绑死 class：
+/// 以「/videos/{slug}/」链接为锚点，在前后窗口里找封面、标题、时长。
 enum Parser {
 
-    // MARK: - 基础工具
+    // MARK: 基础
 
     private static func makeRegex(_ pattern: String) -> NSRegularExpression? {
         try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive, .dotMatchesLineSeparators])
@@ -38,7 +38,6 @@ enum Parser {
         for (key, value) in named {
             text = text.replacingOccurrences(of: key, with: value)
         }
-
         guard let regex = makeRegex("&#(\\d+);") else { return text }
         var ns = text as NSString
         var matches = regex.matches(in: text, options: [], range: NSRange(location: 0, length: ns.length))
@@ -57,95 +56,111 @@ enum Parser {
         return text
     }
 
-    // MARK: - 列表页
+    // MARK: 列表页
 
-    /// 列表页 / 搜索页里的卡片。返回去重后的条目。
     static func videos(in html: String) -> [VideoItem] {
-        let marker = "<div class=\"video-item\">"
-        let chunks = html.components(separatedBy: marker)
-        guard chunks.count > 1 else { return [] }
+        guard let regex = makeRegex("href=\"(?:https?://[^\"/]*)?/videos/([a-zA-Z0-9_\\-]+)/\"") else {
+            return []
+        }
+        let ns = html as NSString
+        let matches = regex.matches(in: html, options: [], range: NSRange(location: 0, length: ns.length))
 
-        let hrefPattern = "href=\"(/index\\.php/vod/play/id/(\\d+)/sid/\\d+/nid/\\d+\\.html)\""
         var seen = Set<String>()
         var result: [VideoItem] = []
-        result.reserveCapacity(chunks.count)
+        result.reserveCapacity(matches.count)
 
-        for chunk in chunks.dropFirst() {
-            guard let playPath = firstMatch(hrefPattern, in: chunk, group: 1),
-                  let vodId = firstMatch(hrefPattern, in: chunk, group: 2),
-                  seen.insert(vodId).inserted
-            else { continue }
+        for match in matches {
+            guard match.numberOfRanges >= 2 else { continue }
+            let slug = ns.substring(with: match.range(at: 1))
+            guard seen.insert(slug).inserted else { continue }
 
-            let cover = firstMatch("data-original=\"([^\"]+)\"", in: chunk)
-                ?? firstMatch("<img[^>]+src=\"([^\"]+)\"", in: chunk)
-                ?? ""
-            let title = decodeEntities(firstMatch("alt=\"([^\"]*)\"", in: chunk) ?? "")
+            // 以锚点为中心取窗口：封面通常在链接前，标题在后
+            let anchorStart = match.range.location
+            let start = max(0, anchorStart - 700)
+            let end = min(ns.length, NSMaxRange(match.range) + 1100)
+            guard end > start else { continue }
+            let window = ns.substring(with: NSRange(location: start, length: end - start))
+
+            let cover = firstMatch(
+                "(?:data-src|data-original|src)=\"(https?://[^\"]+?\\.(?:jpe?g|png|webp)[^\"]*)\"",
+                in: window
+            ) ?? ""
+
+            var title = firstMatch(
+                "<h6[^>]*class=\"[^\"]*title[^\"]*\"[^>]*>\\s*(?:<a[^>]*>)?(.*?)</",
+                in: window
+            ) ?? firstMatch("(?:title|alt)=\"([^\"]{3,200})\"", in: window) ?? ""
+
+            title = decodeEntities(stripTags(title))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            let duration = decodeEntities(firstMatch("class=\"model-view\">([^<]*)<", in: chunk) ?? "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if title.isEmpty {
+                title = slug.replacingOccurrences(of: "-", with: " ").uppercased()
+            }
 
-            if title.isEmpty { continue }
-            result.append(VideoItem(id: vodId, title: title, cover: cover, duration: duration, playPath: playPath))
+            let duration = firstMatch("(\\d{1,2}:\\d{2}(?::\\d{2})?)<", in: window) ?? ""
+
+            result.append(VideoItem(
+                id: slug,
+                title: title,
+                cover: cover,
+                duration: duration,
+                playPath: "/videos/\(slug)/"
+            ))
         }
         return result
     }
 
-    // MARK: - 播放页
+    /// 列表页是否还有下一页
+    static func hasNextPage(in html: String, currentPage: Int) -> Bool {
+        let next = currentPage + 1
+        return html.contains("?page=\(next)\"") || html.contains("/page/\(next)/")
+    }
+
+    // MARK: 详情 / 播放页
 
     static func detailTitle(in html: String) -> String? {
-        if let raw = firstMatch("<title>\\s*在线播放\\s*-\\s*(.*?)\\s*-\\s*KanAV", in: html, group: 1) {
-            let cleaned = decodeEntities(stripTags(raw)).trimmingCharacters(in: .whitespacesAndNewlines)
-            if !cleaned.isEmpty { return cleaned }
-        }
         if let raw = firstMatch("<h1[^>]*>(.*?)</h1>", in: html, group: 1) {
             let cleaned = decodeEntities(stripTags(raw)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if cleaned.count > 2 { return cleaned }
+        }
+        if let raw = firstMatch("<title>(.*?)</title>", in: html, group: 1) {
+            var cleaned = decodeEntities(stripTags(raw)).trimmingCharacters(in: .whitespacesAndNewlines)
+            for separator in [" | ", " - Jable", "- Jable", " Jable.TV"] {
+                if let range = cleaned.range(of: separator) {
+                    cleaned = String(cleaned[..<range.lowerBound])
+                }
+            }
+            cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
             if !cleaned.isEmpty { return cleaned }
         }
         return nil
     }
 
-    /// 苹果 CMS 的 player_aaaa：encrypt=2 时是 unescape(base64(url))，1 时是 unescape(url)。
     static func playSource(from html: String, fallbackTitle: String) -> PlaySource? {
-        guard let json = firstMatch("var player_aaaa\\s*=\\s*(\\{.*?\\})\\s*</script>", in: html, group: 1),
-              let data = json.data(using: .utf8),
-              let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
-        else { return nil }
+        let candidates = [
+            "hlsUrl\\s*[:=]\\s*['\"]([^'\"]+?\\.m3u8[^'\"]*)['\"]",
+            "['\"](https?://[^'\"\\s]+?\\.m3u8[^'\"\\s]*)['\"]",
+            "<source[^>]+src=\"([^\"]+?\\.m3u8[^\"]*)\"",
+            "videoUrl\\s*[:=]\\s*['\"]([^'\"]+)['\"]"
+        ]
 
-        var raw = (object["url"] as? String) ?? ""
-        guard !raw.isEmpty else { return nil }
-
-        let encrypt: String
-        if let value = object["encrypt"] {
-            encrypt = String(describing: value)
-        } else {
-            encrypt = "0"
+        var raw: String?
+        for pattern in candidates {
+            if let found = firstMatch(pattern, in: html), !found.isEmpty {
+                raw = found
+                break
+            }
         }
+        guard var text = raw else { return nil }
 
-        if encrypt == "2" {
-            raw = base64Decode(raw) ?? raw
-        }
-        if let decoded = raw.removingPercentEncoding {
-            raw = decoded
-        }
-        raw = decodeEntities(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+        text = text.replacingOccurrences(of: "\\/", with: "/")
+        text = decodeEntities(text).trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let url = URL(string: raw),
+        guard let url = URL(string: text),
               let scheme = url.scheme?.lowercased(),
               scheme == "http" || scheme == "https"
         else { return nil }
 
         return PlaySource(title: detailTitle(in: html) ?? fallbackTitle, url: url)
-    }
-
-    static func base64Decode(_ raw: String) -> String? {
-        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        text = text.replacingOccurrences(of: "-", with: "+")
-        text = text.replacingOccurrences(of: "_", with: "/")
-        let remainder = text.count % 4
-        if remainder > 0 {
-            text += String(repeating: "=", count: 4 - remainder)
-        }
-        guard let data = Data(base64Encoded: text, options: [.ignoreUnknownCharacters]) else { return nil }
-        return String(data: data, encoding: .utf8)
     }
 }

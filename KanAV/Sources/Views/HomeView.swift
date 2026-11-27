@@ -166,8 +166,9 @@ final class FeedViewModel: ObservableObject {
 
         let nextPage = await MainActor.run { self.page + 1 }
         do {
-            let html = try await Net.html(path: category.path(page: nextPage))
+            let html = try await Net.html(path: category.pagePath(nextPage))
             let parsed = Parser.videos(in: html)
+            let nextAvailable = Parser.hasNextPage(in: html, currentPage: nextPage)
             await MainActor.run {
                 if parsed.isEmpty {
                     self.hasMore = false
@@ -175,6 +176,7 @@ final class FeedViewModel: ObservableObject {
                     let known = Set(self.items.map { $0.id })
                     self.items.append(contentsOf: parsed.filter { !known.contains($0.id) })
                     self.page = nextPage
+                    self.hasMore = nextAvailable
                 }
                 self.isLoading = false
             }

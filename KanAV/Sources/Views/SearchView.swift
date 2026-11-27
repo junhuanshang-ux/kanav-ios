@@ -122,8 +122,7 @@ struct SearchView: View {
         hasSearched = true
 
         do {
-            let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-            let html = try await Net.html(path: "/index.php/vod/search.html?wd=" + encoded)
+            let html = try await Net.html(path: Site.searchPath(query))
             let parsed = Parser.videos(in: html)
             results = parsed
             if parsed.isEmpty {

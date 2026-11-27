@@ -2,7 +2,7 @@ name: Build IPA
 
 # 触发方式：
 #   1) push 到 main/master
-#   2) 打 tag（v1.0.7 这种）→ 除了 artifact，还会自动挂到 Release
+#   2) 打 tag（v1.0.20 这种）→ 除了 artifact，还会自动挂到 Release
 #   3) 手动点击 Actions → Build IPA → Run workflow
 on:
   push:
@@ -28,7 +28,7 @@ jobs:
   build:
     name: Build unsigned IPA
     runs-on: macos-latest
-    timeout-minutes: 90
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -56,38 +56,6 @@ jobs:
           brew install xcodegen
           xcodegen --version
 
-      # whisper.cpp 现场编译成 xcframework；失败不影响主流程，App 自动回退到系统识别
-      - name: Build whisper.cpp xcframework
-        id: whisper
-        continue-on-error: true
-        run: |
-          set -e
-          brew install cmake || true
-          git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git /tmp/whisper.cpp
-          cd /tmp/whisper.cpp
-
-          # 静态打包：直接链进主二进制，不需要 embed、不引入 rpath
-          BUILD_STATIC_XCFRAMEWORK=ON ./build-xcframework.sh
-
-          FW_DIR="$GITHUB_WORKSPACE/Frameworks"
-          mkdir -p "$FW_DIR"
-          echo "--- xcframework 内容 ---"
-          ls -1 build-apple/whisper.xcframework || true
-
-          # 直接取脚本构建出的 iOS 真机产物，避免误抓到 tvOS / macOS slice
-          SLICE="build-ios-device/framework/whisper.framework"
-          test -d "$SLICE"
-          rm -rf "$FW_DIR/whisper.framework"
-          cp -R "$SLICE" "$FW_DIR/whisper.framework"
-
-          echo "--- 产物 ---"
-          ls -R "$FW_DIR/whisper.framework" | head -30
-          file "$FW_DIR/whisper.framework/whisper"
-          if file "$FW_DIR/whisper.framework/whisper" | grep -qiE "tvos|watchos|macos|visionos"; then
-            echo "slice 平台不对"; exit 1
-          fi
-          echo "enabled=true" >> "$GITHUB_OUTPUT"
-
       - name: Generate Xcode project
         run: |
           xcodegen generate --spec project.yml --project .
@@ -97,13 +65,6 @@ jobs:
       - name: Build app (unsigned)
         run: |
           set -o pipefail
-          if [ "${{ steps.whisper.outputs.enabled }}" = "true" ]; then
-            WFLAGS="-framework whisper -framework CoreML -framework Accelerate -framework Metal -lc++"
-            echo "whisper.cpp 已链接（含 CoreML 编码器）"
-          else
-            WFLAGS=""
-            echo "whisper.cpp 未编译成功，使用系统识别兜底"
-          fi
           xcodebuild \
             -project "$PROJECT" \
             -scheme "$SCHEME" \
@@ -113,7 +74,6 @@ jobs:
             -derivedDataPath build \
             MARKETING_VERSION="${{ steps.ver.outputs.version }}" \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
-            OTHER_LDFLAGS="$WFLAGS" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
