@@ -79,7 +79,6 @@ struct NativePlayerScreen: View {
             .frame(maxHeight: isFullscreen ? .infinity : nil)
             .overlay(hudOverlay)
             .overlay(controlsOverlay)
-            .overlay(backOverlay)
             .background(Color.black)
     }
 
@@ -124,30 +123,6 @@ struct NativePlayerScreen: View {
             )
             .opacity(controlsVisible ? 1 : 0)
             .allowsHitTesting(controlsVisible)
-        }
-    }
-
-    /// 面板自动隐藏后，左上角始终留一个返回热区
-    @ViewBuilder private var backOverlay: some View {
-        if !controlsVisible, !isResolving, resolveError == nil {
-            VStack {
-                HStack {
-                    Button {
-                        handleBack()
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 36, height: 36)
-                            .background(Circle().fill(Color.black.opacity(0.45)))
-                    }
-                    .buttonStyle(.plain)
-
-                    Spacer(minLength: 0)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(10)
         }
     }
 

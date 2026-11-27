@@ -9,6 +9,7 @@ enum PlayerHUDKind: Equatable {
     case volume(Float)
     case brightness(CGFloat)
     case seek(from: Double, to: Double)
+    case speed(Double)
 }
 
 // MARK: - 系统亮度 / 音量
@@ -120,7 +121,7 @@ struct PlayerGestureLayer: View {
                         startBoost()
                     }
                     holdWork = work
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: work)
                 }
                 if abs(value.translation.width) > 15 || abs(value.translation.height) > 15 {
                     holdWork?.cancel()
@@ -141,12 +142,14 @@ struct PlayerGestureLayer: View {
 
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
+        hud = .speed(2.0)
     }
 
     private func endBoost() {
         guard isBoosting else { return }
         isBoosting = false
         engine.setSpeed(savedSpeed)
+        hud = nil
     }
 
     private func dragGesture(size: CGSize) -> some Gesture {
@@ -232,6 +235,20 @@ struct PlayerHUDView: View {
                 .padding(.horizontal, 22)
                 .padding(.vertical, 14)
                 .background(Color.black.opacity(0.6))
+                .cornerRadius(12)
+
+            case .speed(let value):
+                HStack(spacing: 8) {
+                    Image(systemName: "forward.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                    Text(String(format: "%g× 快进", value))
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(Color.black.opacity(0.62))
                 .cornerRadius(12)
             }
         }
