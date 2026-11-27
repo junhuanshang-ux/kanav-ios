@@ -51,7 +51,6 @@ struct VideoCard: View {
     var coverHeight: CGFloat = 116
 
     @ObservedObject private var translator = TitleTranslator.shared
-    @State private var pressed = false
 
     private var translated: String? { translator.translated(item.title) }
 
@@ -75,11 +74,6 @@ struct VideoCard: View {
                     .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .topLeading)
             }
         }
-        .scaleEffect(pressed ? 0.97 : 1.0)
-        .animation(.easeOut(duration: 0.12), value: pressed)
-        .onLongPressGesture(minimumDuration: .infinity, pressing: { pressing in
-            pressed = pressing
-        }, perform: {})
         .onAppear {
             translator.request(item.title)
         }
@@ -166,5 +160,15 @@ struct VideoRow: View {
         .onAppear {
             translator.request(item.title)
         }
+    }
+}
+
+
+/// 卡片按压反馈：用 ButtonStyle 而不是手势，避免吞掉点击事件。
+struct CardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }

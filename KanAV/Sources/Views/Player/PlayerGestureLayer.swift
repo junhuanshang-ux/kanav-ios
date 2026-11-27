@@ -87,6 +87,8 @@ struct PlayerGestureLayer: View {
     /// 长按快进
     @State private var isBoosting = false
     @State private var savedSpeed: Double = 1.0
+    @State private var isHolding = false
+    @State private var holdWork: DispatchWorkItem?
 
     var body: some View {
         GeometryReader { geo in
@@ -95,21 +97,7 @@ struct PlayerGestureLayer: View {
                     .contentShape(Rectangle())
                     .gesture(dragGesture(size: geo.size))
                     .onTapGesture { onSingleTap() }
-
-                // 右半屏长按 → 临时 2 倍速
-                HStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .frame(width: geo.size.width / 2)
-                        .onLongPressGesture(minimumDuration: 0.4, maximumDistance: 24) {
-                            startBoost()
-                        } onPressingChanged: { pressing in
-                            if !pressing {
-                                endBoost()
-                            }
-                        }
-                }
+                    .simultaneousGesture(holdGesture(width: geo.size.width))
 
                 VolumeHostView()
                     .frame(width: 1, height: 1)
@@ -117,6 +105,32 @@ struct PlayerGestureLayer: View {
                     .allowsHitTesting(false)
             }
         }
+    }
+
+    /// 右半屏「按住 → 2 倍速」。用 simultaneousGesture + 计时，
+    /// 不做覆盖层，否则会把右半屏的点击和音量滑动一起吞掉。
+    private func holdGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                if !isHolding {
+                    isHolding = true
+                    let startX = value.startLocation.x
+                    let work = DispatchWorkItem {
+                        guard isHolding, startX > width / 2 else { return }
+                        startBoost()
+                    }
+                    holdWork = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
+                }
+                if abs(value.translation.width) > 15 || abs(value.translation.height) > 15 {
+                    holdWork?.cancel()
+                }
+            }
+            .onEnded { _ in
+                isHolding = false
+                holdWork?.cancel()
+                endBoost()
+            }
     }
 
     private func startBoost() {

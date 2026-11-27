@@ -179,7 +179,7 @@ struct CategoryFeed: View {
                     NavigationLink(destination: PlayerScreen(item: item)) {
                         VideoCard(item: item, coverHeight: coverHeight)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(CardButtonStyle())
                     .onAppear {
                         if item.id == model.items.last?.id {
                             Task { await model.loadNextPage() }
