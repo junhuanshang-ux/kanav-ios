@@ -64,14 +64,14 @@ final class PlayerEngine: NSObject, ObservableObject {
     @Published private(set) var selectedAudioID: String?
     @Published private(set) var selectedSubtitleID: String?
 
-    init() {
+    override init() {
+        super.init()
         // 记住上次的倍速和画面比例
         if let saved = UserDefaults.standard.object(forKey: "player.speed") as? Double {
             speed = saved
         }
-        if let raw = UserDefaults.standard.string(forKey: "player.gravity"),
-           let saved = AVLayerVideoGravity(rawValue: raw) {
-            gravity = saved
+        if let raw = UserDefaults.standard.string(forKey: "player.gravity") {
+            gravity = AVLayerVideoGravity(rawValue: raw)
         }
     }
 

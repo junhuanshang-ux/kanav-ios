@@ -58,6 +58,53 @@ enum Parser {
 
     // MARK: 列表页
 
+
+    /// 演员页（/models/）的卡片：img 头像 + h6 名字 + N 部影片
+    static func models(in html: String) -> [Performer] {
+        guard let regex = makeRegex("href=\"https?://[^\"]*?/models/([a-zA-Z0-9_\\-]+)/\"") else {
+            return []
+        }
+        let ns = html as NSString
+        let matches = regex.matches(in: html, options: [], range: NSRange(location: 0, length: ns.length))
+
+        var seen = Set<String>()
+        var result: [Performer] = []
+
+        for match in matches {
+            guard match.numberOfRanges >= 2 else { continue }
+            let slug = ns.substring(with: match.range(at: 1))
+            // 分页链接 /models/2/ 也是这个形状，靠纯数字过滤掉
+            if Int(slug) != nil { continue }
+            guard seen.insert(slug).inserted else { continue }
+
+            let start = max(0, match.range.location - 120)
+            let end = min(ns.length, NSMaxRange(match.range) + 900)
+            guard end > start else { continue }
+            let window = ns.substring(with: NSRange(location: start, length: end - start))
+
+            var name = firstMatch("<h6[^>]*>\\s*(.*?)</", in: window) ?? ""
+            name = decodeEntities(stripTags(name)).trimmingCharacters(in: .whitespacesAndNewlines)
+            if name.isEmpty { continue }
+
+            var cover = firstMatch("data-src=\"([^\"]+)\"", in: window) ?? ""
+            if cover.contains("placeholder") { cover = "" }
+            if cover.isEmpty {
+                cover = firstMatch("src=\"(https?://[^\"]+?)\"", in: window) ?? ""
+                if cover.contains("placeholder") { cover = "" }
+            }
+
+            let count = firstMatch("(\\d+)\\s*部影片", in: window) ?? ""
+
+            result.append(Performer(
+                id: slug,
+                name: name,
+                cover: cover,
+                videoCount: Int(count) ?? 0
+            ))
+        }
+        return result
+    }
+
     /// 站点 404 页（路径猜错时会返回这个）
     static func isNotFound(_ html: String) -> Bool {
         let title = firstMatch("<title>(.*?)</title>", in: html) ?? ""

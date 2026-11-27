@@ -50,7 +50,7 @@ struct PlayerControls: View {
 
             Spacer(minLength: 4)
 
-            AirPlayButton(tint: UIColor.white.opacity(0.9))
+            AirPlayButton(tint: UIColor.white.withAlphaComponent(0.9))
                 .frame(width: 30, height: 26)
         }
         .padding(.horizontal, 10)

@@ -275,8 +275,7 @@ struct NativePlayerScreen: View {
         OrientationSupport.setTabBarHidden(true)
         HistoryStore.shared.record(activeItem)
 
-        engine.onProgress = { [weak self] current, duration in
-            guard let self = self else { return }
+        engine.onProgress = { [self] current, duration in
             onProgress?(current, duration)
             HistoryStore.shared.updateProgress(current, duration: duration, for: self.activeItem.id)
         }
