@@ -193,6 +193,54 @@ struct PlayerControls: View {
         }
         .frame(height: 22)
         .shadow(color: .black.opacity(0.4), radius: 2)
+        .overlay(alignment: .top) {
+            scrubPreview
+        }
+    }
+
+    /// 拖动时在进度条上方显示对应画面
+    @ViewBuilder private var scrubPreview: some View {
+        if isScrubbing {
+            if let image = engine.thumbnail(near: scrubTime) {
+                ZStack(alignment: .bottom) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 152, height: 86)
+                        .clipped()
+
+                    LinearGradient(
+                        colors: [.clear, Color.black.opacity(0.66)],
+                        startPoint: .center,
+                        endPoint: .bottom
+                    )
+                    .frame(height: 36)
+
+                    Text(PlayerHUDView.timeText(scrubTime))
+                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundColor(.white)
+                        .padding(.bottom, 5)
+                }
+                .frame(width: 152, height: 86)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.5), radius: 8, y: 3)
+                .offset(y: -100)
+                .allowsHitTesting(false)
+            } else {
+                Text(PlayerHUDView.timeText(scrubTime))
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Color.black.opacity(0.7)))
+                    .offset(y: -36)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
     // MARK: 控件

@@ -23,6 +23,7 @@ struct NativePlayerScreen: View {
     @AppStorage("player.autoNext") private var autoNext = true
     @State private var resumeApplied = false
     @State private var toast: String?
+    @State private var showPlaylistPicker = false
 
     @Environment(\.presentationMode) private var presentationMode
 
@@ -53,6 +54,9 @@ struct NativePlayerScreen: View {
             .onDisappear(perform: handleDisappear)
             .task {
                 await resolve(activeItem)
+            }
+            .sheet(isPresented: $showPlaylistPicker) {
+                PlaylistPickerSheet(item: activeItem, isPresented: $showPlaylistPicker)
             }
             .onChange(of: engine.state) { newState in
                 onStateChange?(newState)
@@ -270,19 +274,51 @@ struct NativePlayerScreen: View {
 
             Spacer(minLength: 0)
 
-            Button {
-                FavoritesStore.shared.toggle(activeItem)
-            } label: {
-                Image(systemName: isFavorite ? "heart.fill" : "heart")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(isFavorite ? Color.kanAccent : Color.kanTextSecondary)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(Color.kanSurface))
-                    .overlay(Circle().stroke(Color.kanCard, lineWidth: 0.5))
+            HStack(spacing: Spacing.xs) {
+                circleButton(icon: isFavorite ? "heart.fill" : "heart", active: isFavorite) {
+                    FavoritesStore.shared.toggle(activeItem)
+                }
+                .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isFavorite)
+
+                circleButton(icon: "text.badge.plus", active: false) {
+                    showPlaylistPicker = true
+                }
+
+                circleButton(icon: "square.and.arrow.up", active: false) {
+                    shareCard()
+                }
             }
-            .buttonStyle(.plain)
-            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isFavorite)
         }
+    }
+
+    private func circleButton(icon: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(active ? Color.kanAccent : Color.kanTextSecondary)
+                .frame(width: 38, height: 38)
+                .background(Circle().fill(Color.kanSurface))
+                .overlay(Circle().stroke(Color.kanCard, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func shareCard() {
+        guard let image = ImageSnapshot.render(
+            ShareCard(item: activeItem),
+            size: CGSize(width: 480, height: 270)
+        ) else { return }
+
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene }).first,
+            let root = scene.keyWindow?.rootViewController else { return }
+
+        let activity = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        if let popover = activity.popoverPresentationController {
+            popover.sourceView = root.view
+            popover.sourceRect = CGRect(x: root.view.bounds.midX, y: root.view.bounds.midY, width: 1, height: 1)
+        }
+        root.present(activity, animated: true)
     }
 
     // MARK: 动作
@@ -358,10 +394,18 @@ struct NativePlayerScreen: View {
             isResolving = false
             showControls()
             scheduleResume(for: target)
+            scheduleThumbnails()
         } catch let error {
             streamURL = nil
             resolveError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             isResolving = false
+        }
+    }
+
+    /// 起播 3 秒后再去抓缩略图，别和首帧抢带宽
+    private func scheduleThumbnails() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [self] in
+            engine.loadThumbnails()
         }
     }
 

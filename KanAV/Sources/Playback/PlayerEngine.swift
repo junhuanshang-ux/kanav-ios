@@ -56,6 +56,8 @@ final class PlayerEngine: NSObject, ObservableObject {
     @Published private(set) var duration: Double = 0
     @Published private(set) var bufferedTime: Double = 0
     @Published private(set) var presentationSize: CGSize = .zero
+    /// 时间点 → 缩略图（拖动进度条预览用）
+    @Published private(set) var thumbnails: [Double: UIImage] = [:]
     @Published var speed: Double = 1.0
     @Published var isLooping = false
     @Published var gravity: AVLayerVideoGravity = .resizeAspect
@@ -101,6 +103,7 @@ final class PlayerEngine: NSObject, ObservableObject {
 
     func load(url: URL, referer: String? = nil, userAgent: String? = nil, autoplay: Bool = true) {
         teardown()
+        thumbnails = [:]
 
         var headers: [String: String] = [
             "Referer": referer ?? (Site.base + "/"),
@@ -169,6 +172,47 @@ final class PlayerEngine: NSObject, ObservableObject {
         } else {
             play()
         }
+    }
+
+    /// 后台生成一批缩略图，供拖动进度条时预览
+    func loadThumbnails(count: Int = 24) {
+        guard let asset = asset, duration > 60, thumbnails.isEmpty else { return }
+
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.maximumSize = CGSize(width: 176, height: 99)
+        generator.requestedTimeToleranceBefore = CMTime(seconds: 2, preferredTimescale: 600)
+        generator.requestedTimeToleranceAfter = CMTime(seconds: 2, preferredTimescale: 600)
+
+        let total = duration
+        let times = (0..<count).map { index -> NSValue in
+            let second = total * Double(index) / Double(count)
+            return NSValue(time: CMTime(seconds: second, preferredTimescale: 600))
+        }
+
+        generator.generateCGImagesAsynchronously(forTimes: times) { [weak self] requested, image, _, _, _ in
+            guard let image = image else { return }
+            let second = requested.seconds
+            let decoded = UIImage(cgImage: image)
+            DispatchQueue.main.async {
+                self?.thumbnails[second] = decoded
+            }
+        }
+    }
+
+    /// 最接近某个时间点的缩略图
+    func thumbnail(near seconds: Double) -> UIImage? {
+        guard !thumbnails.isEmpty else { return nil }
+        var best: (key: Double, value: UIImage)?
+        var bestDelta = Double.greatestFiniteMagnitude
+        for (key, value) in thumbnails {
+            let delta = abs(key - seconds)
+            if delta < bestDelta {
+                bestDelta = delta
+                best = (key, value)
+            }
+        }
+        return best?.value
     }
 
     /// 截取指定时间点的画面（用于保存到相册）

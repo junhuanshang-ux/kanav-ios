@@ -6,6 +6,7 @@ struct LibraryView: View {
     @ObservedObject private var favorites = FavoritesStore.shared
     @ObservedObject private var history = HistoryStore.shared
     @ObservedObject private var lock = AppLock.shared
+    @ObservedObject private var playlists = PlaylistStore.shared
 
     @AppStorage("app.theme") private var themeRaw = ThemeMode.system.rawValue
     @AppStorage("player.autoNext") private var autoNext = true
@@ -18,7 +19,7 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
 
-                HStack(spacing: 10) {
+                HStack(spacing: Spacing.sm) {
                     NavigationLink {
                         FavoritesView()
                     } label: {
@@ -29,7 +30,14 @@ struct LibraryView: View {
                     NavigationLink {
                         RecentView()
                     } label: {
-                        entryCard(title: "最近观看", count: history.items.count, icon: "clock.arrow.circlepath")
+                        entryCard(title: "最近", count: history.items.count, icon: "clock.arrow.circlepath")
+                    }
+                    .buttonStyle(CardButtonStyle())
+
+                    NavigationLink {
+                        PlaylistsView()
+                    } label: {
+                        entryCard(title: "列表", count: playlists.playlists.count, icon: "list.bullet.rectangle")
                     }
                     .buttonStyle(CardButtonStyle())
                 }
