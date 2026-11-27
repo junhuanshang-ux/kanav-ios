@@ -71,7 +71,7 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
             start = dataRequest.requestedOffset
             length = Int64(dataRequest.requestedLength)
             if start > 0 || length > 0 {
-                let end = length > 0 ? (start + length - 1) : ""
+                let end = length > 0 ? String(start + length - 1) : ""
                 request.setValue("bytes=\(start)-\(end)", forHTTPHeaderField: "Range")
             }
         }
