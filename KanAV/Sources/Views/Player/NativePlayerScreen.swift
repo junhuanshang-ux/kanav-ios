@@ -290,11 +290,12 @@ struct NativePlayerScreen: View {
 
         do {
             let pageURL = Site.url(target.playPath)
-            var html = try await Net.html(path: target.playPath)
+            // 播放页不弹手动验证（会盖住播放器），验证不过直接报错
+            var html = try await Net.html(path: target.playPath, allowManualCheck: false)
             var source = Parser.playSource(from: html, fallbackTitle: target.title)
 
             if source == nil, let inner = Parser.iframeSource(in: html) {
-                if let innerHTML = try? await Net.html(path: inner.absoluteString) {
+                if let innerHTML = try? await Net.html(path: inner.absoluteString, allowManualCheck: false) {
                     source = Parser.playSource(from: innerHTML, fallbackTitle: target.title)
                 }
             }

@@ -4,7 +4,9 @@ struct LibraryView: View {
 
     @ObservedObject private var store = HistoryStore.shared
     @ObservedObject private var lock = AppLock.shared
+    @ObservedObject private var fetcher = WebFetcher.shared
     @AppStorage("player.useWeb") private var useWebPlayer = false
+    @AppStorage("player.useProxy") private var useStreamProxy = true
 
     var body: some View {
         ScrollView {
@@ -48,6 +50,23 @@ struct LibraryView: View {
                     .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
                 }
 
+                settingsCard {
+                    Toggle(isOn: $useStreamProxy) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("流代理")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                            Text(useStreamProxy
+                                 ? "m3u8 / 分片统一带鉴权，兼容性更好"
+                                 : "关闭后直连播放（某些片源代理不兼容时用这个）")
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
+                }
+
                 sectionTitle("安全")
 
                 settingsCard {
@@ -77,10 +96,37 @@ struct LibraryView: View {
                         Text("数据来源 \(Site.base)")
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
-                        Text("播放器使用系统 AVPlayer，支持 HLS / 多音轨 / 内嵌字幕 / 画中画。")
+                        Text("采集用网页（过 Cloudflare 验证），播放用系统 AVPlayer。")
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
                             .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                sectionTitle("诊断")
+
+                settingsCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("列表条目不全时，把最近抓到的页面导出发我，好按真实结构调解析。")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Button {
+                            exportDebugHTML()
+                        } label: {
+                            Text("导出抓取到的 HTML")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(Color.white.opacity(0.12)))
+                        }
+                        .buttonStyle(.plain)
+
+                        Text(lastFetchSummary)
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.35))
                     }
                 }
             }
@@ -122,6 +168,38 @@ struct LibraryView: View {
             .font(.system(size: 13, weight: .semibold))
             .foregroundColor(Color.white.opacity(0.85))
             .padding(.top, 4)
+    }
+
+    private var lastFetchSummary: String {
+        let count = fetcher.lastHTML.count
+        if count == 0 {
+            return "还没有抓取记录（先浏览一次列表）"
+        }
+        return "上次抓取：\(count) 字符"
+    }
+
+    private func exportDebugHTML() {
+        let html = fetcher.lastHTML
+        guard !html.isEmpty else { return }
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("kanav-debug.html")
+        try? html.write(to: url, atomically: true, encoding: .utf8)
+
+        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
+              let root = scene.keyWindow?.rootViewController
+        else { return }
+
+        let activity = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+        if let popover = activity.popoverPresentationController {
+            popover.sourceView = root.view
+            popover.sourceRect = CGRect(
+                x: root.view.bounds.midX,
+                y: root.view.bounds.midY,
+                width: 1,
+                height: 1
+            )
+        }
+        root.present(activity, animated: true)
     }
 
     private func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {

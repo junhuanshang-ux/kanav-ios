@@ -14,13 +14,13 @@ enum Net {
 
     /// jable 挂在 Cloudflare 后面，普通请求必然 403。
     /// 先试一次 URLSession（万一 cookie 已就绪、或某些路径没设防），失败再交给 WebFetcher。
-    static func html(path: String) async throws -> String {
+    static func html(path: String, allowManualCheck: Bool = true) async throws -> String {
         let url = Site.url(path)
 
         if let text = try? await direct(url), !WebFetcher.looksLikeChallenge(text), text.count > 1200 {
             return text
         }
-        guard let text = await WebFetcher.shared.html(url) else {
+        guard let text = await WebFetcher.shared.html(url, allowManualCheck: allowManualCheck) else {
             throw KanError.challenge
         }
         if WebFetcher.looksLikeChallenge(text) {

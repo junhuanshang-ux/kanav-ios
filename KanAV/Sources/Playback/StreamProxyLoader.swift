@@ -57,6 +57,11 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
               let realURL = Self.realURL(from: url)
         else { return false }
 
+        // 已经取消或完成的请求直接忽略
+        if loadingRequest.isCancelled || loadingRequest.isFinished {
+            return false
+        }
+
         var request = URLRequest(url: realURL)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue(referer, forHTTPHeaderField: "Referer")
@@ -77,44 +82,67 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
         }
 
         let task = session.dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self else { return }
+            autoreleasepool {
+                guard let self = self else { return }
+                // 已经被 AVPlayer 取消/完成的请求不能再碰，否则会崩
+                guard !loadingRequest.isCancelled, !loadingRequest.isFinished else { return }
 
-            if let error = error {
-                loadingRequest.finishLoading(with: error)
-                return
-            }
-            guard let http = response as? HTTPURLResponse, let payload = data else {
-                loadingRequest.finishLoading(with: NSError(domain: "StreamProxy", code: -1))
-                return
-            }
-            guard (200...299).contains(http.statusCode) else {
-                loadingRequest.finishLoading(with: NSError(
-                    domain: "StreamProxy",
-                    code: http.statusCode,
-                    userInfo: [NSLocalizedDescriptionKey: "播放源返回 \(http.statusCode)"]
-                ))
-                return
-            }
+                if let error = error {
+                    loadingRequest.finishLoading(with: error)
+                    return
+                }
+                guard let http = response as? HTTPURLResponse, let payload = data else {
+                    loadingRequest.finishLoading(with: NSError(domain: "StreamProxy", code: -1))
+                    return
+                }
+                guard (200...299).contains(http.statusCode) else {
+                    loadingRequest.finishLoading(with: NSError(
+                        domain: "StreamProxy",
+                        code: http.statusCode,
+                        userInfo: [NSLocalizedDescriptionKey: "播放源返回 \(http.statusCode)"]
+                    ))
+                    return
+                }
 
-            // playlist：把里面的分片地址改写成代理地址，保证后续请求也走这里
-            if start == 0,
-               let text = String(data: payload, encoding: .utf8),
-               text.contains("#EXTM3U") {
-                let rewritten = self.rewritePlaylist(text, base: realURL)
-                loadingRequest.dataRequest?.respond(with: Data(rewritten.utf8))
+                // playlist：改写分片地址，让后续请求也走这里
+                if start == 0,
+                   let text = String(data: payload, encoding: .utf8),
+                   text.contains("#EXTM3U") {
+                    let rewritten = self.rewritePlaylist(text, base: realURL)
+                    let body = Data(rewritten.utf8)
+                    loadingRequest.dataRequest?.respond(with: body)
+                    if let info = loadingRequest.contentInformationRequest {
+                        info.contentType = "application/vnd.apple.mpegurl"
+                        info.contentLength = Int64(body.count)
+                        info.isByteRangeAccessSupported = false
+                    }
+                    loadingRequest.finishLoading()
+                    return
+                }
+
+                // 分片：必须只回填 AVPlayer 要的那一段。
+                // 服务端有时会忽略 Range 直接返回 200 全量，整包塞回去会让 AVPlayer 越界崩溃。
+                var slice = payload
+                if let dataRequest = loadingRequest.dataRequest {
+                    let offset = max(0, dataRequest.requestedOffset)
+                    let length = dataRequest.requestedLength
+                    if http.statusCode == 200, length > 0, payload.count > length {
+                        let lower = min(Int(offset), payload.count)
+                        let upper = min(payload.count, lower + length)
+                        if lower < upper {
+                            slice = payload.subdata(in: lower..<upper)
+                        }
+                    }
+                    dataRequest.respond(with: slice)
+                }
+
+                if let info = loadingRequest.contentInformationRequest {
+                    info.contentType = http.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
+                    info.contentLength = Int64(slice.count)
+                    info.isByteRangeAccessSupported = true
+                }
                 loadingRequest.finishLoading()
-                return
             }
-
-            // 分片 / 密钥：按原样回填
-            loadingRequest.dataRequest?.respond(with: payload)
-
-            if let info = loadingRequest.contentInformationRequest {
-                info.contentType = http.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
-                info.contentLength = Int64(payload.count)
-                info.isByteRangeAccessSupported = true
-            }
-            loadingRequest.finishLoading()
         }
         task.resume()
         return true

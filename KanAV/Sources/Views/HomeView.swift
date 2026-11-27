@@ -174,9 +174,12 @@ final class FeedViewModel: ObservableObject {
                     self.hasMore = false
                 } else {
                     let known = Set(self.items.map { $0.id })
-                    self.items.append(contentsOf: parsed.filter { !known.contains($0.id) })
+                    let added = parsed.filter { !known.contains($0.id) }
+                    self.items.append(contentsOf: added)
                     self.page = nextPage
-                    self.hasMore = nextAvailable
+                    // 有分页链接就继续；没有分页链接但仍有新内容（无限滚动式接口）也继续；
+                    // 本页全是重复内容才停，避免死循环
+                    self.hasMore = nextAvailable || !added.isEmpty
                 }
                 self.isLoading = false
             }

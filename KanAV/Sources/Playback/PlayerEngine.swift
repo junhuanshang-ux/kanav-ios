@@ -96,12 +96,29 @@ final class PlayerEngine: NSObject, ObservableObject {
         let resolvedUA = userAgent ?? Site.userAgent
         let cookie = Net.cookieHeader(for: url)
 
-        // 走资源代理：m3u8 / 分片 / 密钥全部由我们自己发请求，统一带 header
-        let proxyURL = StreamProxyLoader.proxyURL(for: url)
-        let loader = StreamProxyLoader(referer: resolvedReferer, userAgent: resolvedUA, cookie: cookie)
-        let asset = AVURLAsset(url: proxyURL)
-        asset.resourceLoader.setDelegate(loader, queue: loaderQueue)
-        self.proxyLoader = loader
+        // 流代理：接管 m3u8 / 分片 / 密钥，统一带鉴权。
+        // 万一代理在某个片源上出问题，设置里关掉即可回到直连。
+        let useProxy = UserDefaults.standard.object(forKey: "player.useProxy") as? Bool ?? true
+        let asset: AVURLAsset
+        if useProxy {
+            let proxyURL = StreamProxyLoader.proxyURL(for: url)
+            let loader = StreamProxyLoader(referer: resolvedReferer, userAgent: resolvedUA, cookie: cookie)
+            let proxyAsset = AVURLAsset(url: proxyURL)
+            proxyAsset.resourceLoader.setDelegate(loader, queue: loaderQueue)
+            self.proxyLoader = loader
+            asset = proxyAsset
+        } else {
+            var headers: [String: String] = [
+                "Referer": resolvedReferer,
+                "User-Agent": resolvedUA,
+                "Accept": "*/*"
+            ]
+            if let cookie = cookie {
+                headers["Cookie"] = cookie
+            }
+            self.proxyLoader = nil
+            asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+        }
         self.asset = asset
 
         let item = AVPlayerItem(asset: asset)
