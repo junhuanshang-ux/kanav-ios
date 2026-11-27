@@ -288,12 +288,29 @@ struct PlayerScreen: View {
         resolveError = nil
 
         do {
-            let html = try await Net.html(path: target.playPath)
-            guard let source = Parser.playSource(from: html, fallbackTitle: target.title) else {
-                throw KanError.noPlayURL
+            let pageURL = Site.url(target.playPath)
+            var html = try await Net.html(path: target.playPath)
+            var source = Parser.playSource(from: html, fallbackTitle: target.title)
+
+            // 有些片源是 iframe 第三方播放器：页面里没有 m3u8，再抓一层
+            if source == nil, let inner = Parser.iframeSource(in: html) {
+                if let innerHTML = try? await Net.html(path: inner.absoluteString) {
+                    source = Parser.playSource(from: innerHTML, fallbackTitle: target.title)
+                }
             }
-            streamURL = source.url
-            engine.load(url: source.url, autoplay: true)
+
+            guard let found = source else { throw KanError.noPlayURL }
+
+            // 预检 m3u8：确认可用、并把 master playlist 换成最高码率子流
+            let resolved = try await StreamResolver.resolve(found.url, referer: pageURL.absoluteString)
+
+            streamURL = resolved.url
+            engine.load(
+                url: resolved.url,
+                referer: resolved.referer,
+                userAgent: resolved.userAgent,
+                autoplay: true
+            )
             isResolving = false
             showControls()
         } catch let error {

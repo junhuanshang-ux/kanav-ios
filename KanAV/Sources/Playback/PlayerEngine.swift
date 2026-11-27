@@ -87,14 +87,15 @@ final class PlayerEngine: NSObject, ObservableObject {
 
     // MARK: 载入
 
-    func load(url: URL, autoplay: Bool = true) {
+    func load(url: URL, referer: String? = nil, userAgent: String? = nil, autoplay: Bool = true) {
         teardown()
 
         var headers: [String: String] = [
-            "Referer": Site.base + "/",
-            "User-Agent": Site.userAgent
+            "Referer": referer ?? (Site.base + "/"),
+            "User-Agent": userAgent ?? Site.userAgent,
+            "Accept": "*/*"
         ]
-        // jable 的 m3u8 需要过 CF 后的 cookie
+        // jable 的 m3u8 / 分片需要过 CF 之后的 cookie
         if let cookie = Net.cookieHeader(for: url) {
             headers["Cookie"] = cookie
         }
@@ -103,6 +104,8 @@ final class PlayerEngine: NSObject, ObservableObject {
 
         let item = AVPlayerItem(asset: asset)
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
+        // 少缓冲一点，起播更快
+        item.preferredForwardBufferDuration = 3
         self.item = item
         hasEnded = false
         player.replaceCurrentItem(with: item)

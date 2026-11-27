@@ -131,6 +131,24 @@ enum Parser {
         return ""
     }
 
+    /// 有些片源是 iframe 第三方播放器，页面里没有 m3u8，需要再抓一层
+    static func iframeSource(in html: String) -> URL? {
+        let patterns = [
+            "<iframe[^>]+src=\"([^\"]+)\"",
+            "player_url\\s*[:=]\\s*['\"]([^'\"]+)['\"]"
+        ]
+        for pattern in patterns {
+            guard let raw = firstMatch(pattern, in: html) else { continue }
+            var value = decodeEntities(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+            if value.hasPrefix("//") { value = "https:" + value }
+            if value.hasPrefix("/") { value = Site.base + value }
+            if let url = URL(string: value), url.scheme?.hasPrefix("http") == true {
+                return url
+            }
+        }
+        return nil
+    }
+
     /// 列表页是否还有下一页
     static func hasNextPage(in html: String, currentPage: Int) -> Bool {
         let next = currentPage + 1
