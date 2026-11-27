@@ -22,6 +22,7 @@ struct NativePlayerScreen: View {
     @State private var hideWork: DispatchWorkItem?
     @AppStorage("player.autoNext") private var autoNext = true
     @State private var resumeApplied = false
+    @State private var toast: String?
 
     @Environment(\.presentationMode) private var presentationMode
 
@@ -87,6 +88,7 @@ struct NativePlayerScreen: View {
             .frame(maxHeight: isFullscreen ? .infinity : nil)
             .overlay(hudOverlay)
             .overlay(controlsOverlay)
+            .overlay(toastOverlay)
             .background(Color.black)
     }
 
@@ -126,7 +128,8 @@ struct NativePlayerScreen: View {
                 title: activeItem.title,
                 isFullscreen: isFullscreen,
                 onBack: handleBack,
-                onToggleFullscreen: toggleFullscreen
+                onToggleFullscreen: toggleFullscreen,
+                onCapture: captureFrame
             )
             .opacity(controlsVisible ? 1 : 0)
             .allowsHitTesting(controlsVisible)
@@ -356,6 +359,44 @@ struct NativePlayerScreen: View {
             guard activeItem.id == target.id else { return }
             guard engine.duration > 0, saved < engine.duration - 30 else { return }
             engine.seek(to: saved)
+        }
+    }
+
+    @ViewBuilder private var toastOverlay: some View {
+        if let toast = toast {
+            VStack {
+                Spacer()
+                Text(toast)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Capsule().fill(Color.black.opacity(0.72)))
+                    .padding(.bottom, 90)
+            }
+            .allowsHitTesting(false)
+            .transition(.opacity)
+        }
+    }
+
+    private func captureFrame() {
+        Task {
+            let image = await engine.snapshot(at: engine.currentTime)
+            await MainActor.run {
+                guard let image = image else {
+                    showToast("截图失败")
+                    return
+                }
+                UIImageWriteToSavedPhotosAlbum(image, nil, nil, nil)
+                showToast("已保存到相册")
+            }
+        }
+    }
+
+    private func showToast(_ text: String) {
+        withAnimation { toast = text }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            withAnimation { if toast == text { toast = nil } }
         }
     }
 

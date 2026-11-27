@@ -12,6 +12,7 @@ struct PlayerControls: View {
 
     let onBack: () -> Void
     let onToggleFullscreen: () -> Void
+    let onCapture: () -> Void
 
     @State private var isScrubbing = false
     @State private var scrubTime: Double = 0
@@ -121,6 +122,7 @@ struct PlayerControls: View {
 
                 Spacer(minLength: 2)
 
+                iconButton("camera") { onCapture() }
                 speedMenu
                 gravityButton
                 loopButton

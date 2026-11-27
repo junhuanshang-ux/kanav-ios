@@ -4,6 +4,9 @@ struct HomeView: View {
 
     @State private var selected: Category = Site.quickCategories[0]
     @State private var showCategoryPicker = false
+    @State private var randomItem: VideoItem?
+    @State private var showRandomPlayer = false
+    @State private var isRandomizing = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,7 +23,7 @@ struct HomeView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .center, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("博客")
                     .font(.system(size: 28, weight: .heavy))
@@ -33,18 +36,70 @@ struct HomeView: View {
 
             Spacer(minLength: 0)
 
+            headerButton("shuffle") {
+                playRandom()
+            }
+
+            NavigationLink(destination: ModelsView()) {
+                headerIcon("person.2.fill")
+            }
+            .buttonStyle(.plain)
+
             NavigationLink(destination: SearchView()) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(Color.kanTextPrimary)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(Color.kanSurface))
+                headerIcon("magnifyingglass")
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 10)
+        .background(
+            NavigationLink(
+                isActive: $showRandomPlayer,
+                destination: {
+                    if let item = randomItem {
+                        PlayerScreen(item: item)
+                    } else {
+                        EmptyView()
+                    }
+                },
+                label: { EmptyView() }
+            )
+            .hidden()
+        )
+    }
+
+    private func headerIcon(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 16, weight: .semibold))
+            .foregroundColor(Color.kanTextPrimary)
+            .frame(width: 40, height: 40)
+            .background(Circle().fill(Color.kanSurface))
+    }
+
+    private func headerButton(_ name: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            headerIcon(name)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 从最新列表里随机挑一部
+    private func playRandom() {
+        guard !isRandomizing else { return }
+        isRandomizing = true
+        Task {
+            let page = Int.random(in: 1...120)
+            let path = page == 1 ? "/latest-updates/" : "/latest-updates/\(page)/"
+            let html = try? await Net.html(path: path, allowManualCheck: false)
+            let item = html.flatMap { Parser.videos(in: $0).randomElement() }
+            await MainActor.run {
+                isRandomizing = false
+                guard let item = item else { return }
+                randomItem = item
+                showRandomPlayer = true
+            }
+        }
     }
 
     private var categoryBar: some View {

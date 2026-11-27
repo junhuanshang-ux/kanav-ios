@@ -171,6 +171,26 @@ final class PlayerEngine: NSObject, ObservableObject {
         }
     }
 
+    /// 截取指定时间点的画面（用于保存到相册）
+    func snapshot(at seconds: Double) async -> UIImage? {
+        guard let asset = asset else { return nil }
+        let generator = AVAssetImageGenerator(asset: asset)
+        generator.appliesPreferredTrackTransform = true
+        generator.requestedTimeToleranceBefore = CMTime(seconds: 0.4, preferredTimescale: 600)
+        generator.requestedTimeToleranceAfter = CMTime(seconds: 0.4, preferredTimescale: 600)
+
+        let time = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
+        return await withCheckedContinuation { (continuation: CheckedContinuation<UIImage?, Never>) in
+            generator.generateCGImagesAsynchronously(forTimes: [NSValue(time: time)]) { _, image, _, _, _ in
+                if let image = image {
+                    continuation.resume(returning: UIImage(cgImage: image))
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+
     func seek(to seconds: Double) {
         guard duration > 0 || item != nil else { return }
 

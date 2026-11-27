@@ -8,6 +8,15 @@ struct SearchView: View {
     @State private var message: String?
     @State private var hasSearched = false
 
+    /// 输入像 ABF-403 / abf403 时走「直达」而不是搜索
+    private var detectedCode: String? {
+        let query = keyword.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !query.isEmpty else { return nil }
+        let pattern = "^[A-Z]{2,6}-?[0-9]{2,5}$"
+        guard query.range(of: pattern, options: .regularExpression) != nil else { return nil }
+        return query
+    }
+
     private let columns = [
         GridItem(.flexible(), spacing: 10),
         GridItem(.flexible(), spacing: 10)
@@ -51,7 +60,7 @@ struct SearchView: View {
                 .buttonStyle(.plain)
             }
 
-            Button("搜索") {
+            Button(detectedCode == nil ? "搜索" : "直达") {
                 Task { await performSearch() }
             }
             .font(.system(size: 13, weight: .semibold))
@@ -105,7 +114,7 @@ struct SearchView: View {
                         NavigationLink(destination: PlayerScreen(item: item)) {
                             VideoCard(item: item)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(CardButtonStyle())
                     }
                 }
                 .padding(12)
@@ -120,6 +129,27 @@ struct SearchView: View {
         isLoading = true
         message = nil
         hasSearched = true
+
+        // 番号直达：直接试 /videos/{code}/，命中就不必走搜索
+        if let code = detectedCode {
+            let normalized = code.lowercased()
+            let candidates = [normalized, normalized.replacingOccurrences(of: "-", with: "")]
+            for candidate in candidates {
+                let path = "/videos/\(candidate)/"
+                if let html = try? await Net.html(path: path, allowManualCheck: false),
+                   !Parser.isNotFound(html) {
+                    results = [VideoItem(
+                        id: candidate,
+                        title: code,
+                        cover: "",
+                        duration: "",
+                        playPath: path
+                    )]
+                    isLoading = false
+                    return
+                }
+            }
+        }
 
         do {
             let html = try await Net.html(path: Site.searchPath(query))

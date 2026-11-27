@@ -222,6 +222,30 @@ struct VideoItem: Identifiable, Hashable, Codable {
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
+struct Performer: Identifiable, Hashable {
+    let id: String
+    let name: String
+    let cover: String
+    let videoCount: Int
+
+    var coverURL: URL? {
+        guard !cover.isEmpty, let url = URL(string: cover) else { return nil }
+        return url
+    }
+
+    var path: String { "/models/\(id)/" }
+
+    func pagePath(_ page: Int) -> String {
+        guard page > 1 else { return path }
+        return path + "\(page)/"
+    }
+
+    /// 复用分类流
+    var asCategory: Category {
+        Category(name: name, basePath: path)
+    }
+}
+
 struct PlaySource {
     let title: String
     let url: URL
