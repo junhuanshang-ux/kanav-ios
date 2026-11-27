@@ -99,7 +99,7 @@ final class WebFetcher: NSObject, ObservableObject {
             }
 
             if Date() > deadline {
-                if !manualCheckAllowed {
+                if !self.manualCheckAllowed {
                     self.finish(nil)
                     return
                 }
@@ -220,7 +220,7 @@ final class WebFetcher: NSObject, ObservableObject {
         let barHeight: CGFloat = 92
         let bar = UIView(frame: CGRect(x: 0, y: 0, width: window.bounds.width, height: barHeight))
         bar.backgroundColor = UIColor(white: 0.08, alpha: 0.98)
-        bar.autoresizingMask = [.flexibleWidth, .bottom]
+        bar.autoresizingMask = [.flexibleWidth, .flexibleBottomMargin]
 
         let title = UILabel()
         title.text = "站点要求人机验证"
