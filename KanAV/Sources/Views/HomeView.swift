@@ -167,7 +167,16 @@ final class FeedViewModel: ObservableObject {
         let nextPage = await MainActor.run { self.page + 1 }
         do {
             let html = try await Net.html(path: category.pagePath(nextPage))
-            let parsed = Parser.videos(in: html)
+            var parsed = Parser.videos(in: html)
+
+            // 分类路径失效（站点返回 404）时回退到「最新」，别让用户看到空列表
+            if parsed.isEmpty, nextPage == 1, Parser.isNotFound(html),
+               category.basePath != "/latest-updates/" {
+                if let fallback = try? await Net.html(path: "/latest-updates/") {
+                    parsed = Parser.videos(in: fallback)
+                }
+            }
+
             let nextAvailable = Parser.hasNextPage(in: html, currentPage: nextPage)
             await MainActor.run {
                 if parsed.isEmpty {

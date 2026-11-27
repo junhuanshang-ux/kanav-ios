@@ -58,8 +58,15 @@ enum Parser {
 
     // MARK: 列表页
 
+    /// 站点 404 页（路径猜错时会返回这个）
+    static func isNotFound(_ html: String) -> Bool {
+        let title = firstMatch("<title>(.*?)</title>", in: html) ?? ""
+        if title.contains("404") { return true }
+        return html.contains("頁面丟失") || html.contains("页面丢失") || html.contains("Page Not Found")
+    }
+
     static func videos(in html: String) -> [VideoItem] {
-        guard let regex = makeRegex("href=\"(?:https?://[^\"/]*)?/videos/([a-zA-Z0-9_\\-]+)/\"") else {
+        guard let regex = makeRegex("href=\"https?://[^\"]*?/videos/([a-zA-Z0-9_\\-]+)/\"") else {
             return []
         }
         let ns = html as NSString
@@ -74,19 +81,24 @@ enum Parser {
             let slug = ns.substring(with: match.range(at: 1))
             guard seen.insert(slug).inserted else { continue }
 
-            // 以锚点为中心取窗口：封面通常在链接前，标题在后
+            // 卡片结构：a[href] → img(data-src) → span.label(时长)，标题在后面的 .detail 里
             let anchorStart = match.range.location
-            let start = max(0, anchorStart - 700)
-            let end = min(ns.length, NSMaxRange(match.range) + 1100)
+            let start = max(0, anchorStart - 200)
+            let end = min(ns.length, NSMaxRange(match.range) + 1800)
             guard end > start else { continue }
             let window = ns.substring(with: NSRange(location: start, length: end - start))
 
-            let cover = extractCover(from: window)
+            // 封面：真实地址在 data-src，src 是 placeholder
+            var cover = firstMatch("data-src=\"([^\"]+)\"", in: window) ?? ""
+            if cover.isEmpty || cover.contains("placeholder") {
+                cover = firstMatch("data-original=\"([^\"]+)\"", in: window) ?? cover
+            }
+            if cover.contains("placeholder") { cover = "" }
 
             var title = firstMatch(
                 "<h6[^>]*class=\"[^\"]*title[^\"]*\"[^>]*>\\s*(?:<a[^>]*>)?(.*?)</",
                 in: window
-            ) ?? firstMatch("(?:title|alt)=\"([^\"]{3,200})\"", in: window) ?? ""
+            ) ?? firstMatch("<a[^>]+title=\"([^\"]{3,200})\"", in: window) ?? ""
 
             title = decodeEntities(stripTags(title))
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -94,13 +106,13 @@ enum Parser {
                 title = slug.replacingOccurrences(of: "-", with: " ").uppercased()
             }
 
-            let duration = firstMatch("(\\d{1,2}:\\d{2}(?::\\d{2})?)<", in: window) ?? ""
+            let duration = firstMatch("<span[^>]*class=\"label\"[^>]*>([^<]+)</span>", in: window) ?? ""
 
             result.append(VideoItem(
                 id: slug,
                 title: title,
                 cover: cover,
-                duration: duration,
+                duration: duration.trimmingCharacters(in: .whitespacesAndNewlines),
                 playPath: "/videos/\(slug)/"
             ))
         }

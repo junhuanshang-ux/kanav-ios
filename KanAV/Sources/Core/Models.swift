@@ -9,16 +9,12 @@ enum Site {
     static let userAgent =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
-    /// 顶部分类。jable 是路径式路由，分页用 ?page=N
+    /// 顶部分类。只保留已在站点导航里确认存在的路径。
+    /// 之前猜的 /categories/xxx/ 全部 404，是"采集不到"的直接原因。
     static let categories: [Category] = [
         Category(id: 0, name: "最新", basePath: "/latest-updates/"),
         Category(id: 1, name: "热门", basePath: "/hot/"),
-        Category(id: 2, name: "新作", basePath: "/new-release/"),
-        Category(id: 3, name: "中文字幕", basePath: "/categories/chinese-subtitle/"),
-        Category(id: 4, name: "无码", basePath: "/categories/uncensored/"),
-        Category(id: 5, name: "破解马赛克", basePath: "/categories/reducing-mosaic/"),
-        Category(id: 6, name: "素人", basePath: "/categories/amateur/"),
-        Category(id: 7, name: "VR", basePath: "/categories/vr/")
+        Category(id: 2, name: "首页", basePath: "/")
     ]
 
     static func url(_ path: String) -> URL {
