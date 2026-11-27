@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import UniformTypeIdentifiers
 
 /// HLS 请求代理。
 ///
@@ -113,7 +114,10 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
                     let body = Data(rewritten.utf8)
                     loadingRequest.dataRequest?.respond(with: body)
                     if let info = loadingRequest.contentInformationRequest {
-                        info.contentType = "application/vnd.apple.mpegurl"
+                        info.contentType = self.bestContentType(
+                            allowed: info.allowedContentTypes,
+                            serverMIME: "application/vnd.apple.mpegurl"
+                        )
                         info.contentLength = Int64(body.count)
                         info.isByteRangeAccessSupported = false
                     }
@@ -138,7 +142,10 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
                 }
 
                 if let info = loadingRequest.contentInformationRequest {
-                    info.contentType = http.value(forHTTPHeaderField: "Content-Type") ?? "application/octet-stream"
+                    info.contentType = self.bestContentType(
+                        allowed: info.allowedContentTypes,
+                        serverMIME: http.value(forHTTPHeaderField: "Content-Type")
+                    )
                     info.contentLength = Int64(slice.count)
                     info.isByteRangeAccessSupported = true
                 }
@@ -147,6 +154,29 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
         }
         task.resume()
         return true
+    }
+
+    /// AVFoundation 会校验 contentType 必须落在 allowedContentTypes 里，
+    /// 不在白名单就抛 NSInternalInconsistencyException 直接崩。
+    /// 所以永远只从 allowedContentTypes 里挑。
+    private func bestContentType(allowed: [String], serverMIME: String?) -> String {
+        guard !allowed.isEmpty else { return "public.data" }
+
+        if let mime = serverMIME, let uti = UTType(mimeType: mime)?.identifier, allowed.contains(uti) {
+            return uti
+        }
+
+        for candidate in [
+            "public.mpeg-2-transport-stream",
+            "public.mpeg-4",
+            "public.mpegurl",
+            "public.m3u-playlist",
+            "public.data"
+        ] where allowed.contains(candidate) {
+            return candidate
+        }
+
+        return allowed[0]
     }
 
     // MARK: playlist 重写
