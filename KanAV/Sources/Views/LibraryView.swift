@@ -4,7 +4,7 @@ struct LibraryView: View {
 
     @ObservedObject private var store = HistoryStore.shared
     @ObservedObject private var lock = AppLock.shared
-    @AppStorage("player.useWeb") private var useWebPlayer = true
+    @AppStorage("player.useWeb") private var useWebPlayer = false
 
     var body: some View {
         ScrollView {
@@ -38,8 +38,8 @@ struct LibraryView: View {
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.white)
                             Text(useWebPlayer
-                                 ? "加载站点自带播放器，CF / CDN 鉴权天然一致，兼容性最好"
-                                 : "用内置播放器：倍速、手势、画中画，但部分片源可能被 CDN 拦")
+                                 ? "站点自带播放器，兼容性兜底（控件是网页的）"
+                                 : "内置播放器：m3u8 / 分片统一走资源代理带鉴权，支持倍速、手势、画中画")
                                 .font(.system(size: 11))
                                 .foregroundColor(.gray)
                                 .fixedSize(horizontal: false, vertical: true)

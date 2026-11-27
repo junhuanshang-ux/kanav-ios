@@ -6,7 +6,7 @@ struct PlayerScreen: View {
 
     let item: VideoItem
 
-    @AppStorage("player.useWeb") private var useWebPlayer = true
+    @AppStorage("player.useWeb") private var useWebPlayer = false
 
     var body: some View {
         if useWebPlayer {
