@@ -2,7 +2,6 @@ import AVFoundation
 import SwiftUI
 
 /// 原生播放器：AVPlayerLayer + 自绘控件。
-/// 默认不启用（设置里可切），因为 jable 的 CDN 对非浏览器请求限制较多。
 struct NativePlayerScreen: View {
 
     let item: VideoItem
@@ -10,7 +9,7 @@ struct NativePlayerScreen: View {
     var onProgress: ((Double, Double) -> Void)?
 
     @StateObject private var engine = PlayerEngine()
-    @ObservedObject private var history = HistoryStore.shared
+    @ObservedObject private var favorites = FavoritesStore.shared
 
     @State private var activeItem: VideoItem
     @State private var isFullscreen = false
@@ -19,6 +18,7 @@ struct NativePlayerScreen: View {
     @State private var isResolving = true
     @State private var resolveError: String?
     @State private var streamURL: URL?
+    @State private var recommendations: [VideoItem] = []
     @State private var hideWork: DispatchWorkItem?
 
     @Environment(\.presentationMode) private var presentationMode
@@ -34,6 +34,10 @@ struct NativePlayerScreen: View {
         _activeItem = State(initialValue: item)
     }
 
+    private var isFavorite: Bool {
+        favorites.contains(activeItem)
+    }
+
     // MARK: Body
 
     var body: some View {
@@ -41,6 +45,7 @@ struct NativePlayerScreen: View {
             .navigationBarHidden(isFullscreen)
             .statusBar(hidden: isFullscreen)
             .background(Color.black.ignoresSafeArea())
+            .preferredColorScheme(.dark)
             .onAppear(perform: handleAppear)
             .onDisappear(perform: handleDisappear)
             .task {
@@ -71,8 +76,6 @@ struct NativePlayerScreen: View {
 
     // MARK: 播放器区域
 
-    /// 不用 aspectRatio：全屏时 aspectRatio(nil, .fill) 会把浮层算进布局，
-    /// 导致全屏后控制面板消失、退不出来。改成显式宽高。
     private func playerArea(width: CGFloat) -> some View {
         baseLayer
             .frame(width: width, height: isFullscreen ? nil : width * 9.0 / 16.0)
@@ -85,12 +88,11 @@ struct NativePlayerScreen: View {
     private var baseLayer: some View {
         ZStack {
             PlayerSurface(player: engine.player, gravity: engine.gravity) { _ in }
-                // 全屏时让视频层铺到屏幕边缘（控件层仍留在安全区内）
                 .ignoresSafeArea(.all, edges: isFullscreen ? .all : [])
-            .transaction { transaction in
-                transaction.animation = nil
-                transaction.disablesAnimations = true
-            }
+                .transaction { transaction in
+                    transaction.animation = nil
+                    transaction.disablesAnimations = true
+                }
 
             PlayerGestureLayer(engine: engine, hud: $hud) {
                 toggleControls()
@@ -195,36 +197,69 @@ struct NativePlayerScreen: View {
 
     private var embeddedInfo: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(activeItem.title)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.white)
-                        .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 16) {
+                titleRow
 
-                    Text(activeItem.subtitle)
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                }
+                if !recommendations.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("猜你喜欢")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(Color.kanTextPrimary)
 
-                if !history.items.isEmpty {
-                    Text("最近观看")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.85))
-
-                    ForEach(history.items) { entry in
-                        Button {
-                            play(entry)
-                        } label: {
-                            VideoRow(item: entry)
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: 12),
+                                GridItem(.flexible(), spacing: 12)
+                            ],
+                            spacing: 16
+                        ) {
+                            ForEach(recommendations) { entry in
+                                Button {
+                                    play(entry)
+                                } label: {
+                                    VideoCard(item: entry)
+                                }
+                                .buttonStyle(CardButtonStyle())
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
-            .padding(14)
+            .padding(16)
         }
         .background(Color.kanBackground)
+    }
+
+    private var titleRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                if let code = activeItem.code {
+                    Text(code)
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundColor(Color.kanAccent)
+                }
+                Text(activeItem.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(Color.kanTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(activeItem.subtitle)
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.kanTextSecondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                FavoritesStore.shared.toggle(activeItem)
+            } label: {
+                Image(systemName: isFavorite ? "heart.fill" : "heart")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(isFavorite ? Color.kanAccent : Color.kanTextSecondary)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(Color.kanSurface))
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     // MARK: 动作
@@ -260,7 +295,6 @@ struct NativePlayerScreen: View {
         isResolving = true
         resolveError = nil
 
-        // 命中缓存直接起播，免掉抓页面 + 解析 + 预检三步
         if let cached = PlayURLCache.shared.get(target.id) {
             streamURL = cached.url
             engine.load(url: cached.url, referer: cached.referer, autoplay: true)
@@ -271,8 +305,11 @@ struct NativePlayerScreen: View {
 
         do {
             let pageURL = Site.url(target.playPath)
-            // 播放页不弹手动验证（会盖住播放器），验证不过直接报错
             var html = try await Net.html(path: target.playPath, allowManualCheck: false)
+
+            // 播放页里同时有「猜你喜欢」，先解析出来
+            recommendations = Parser.videos(in: html).filter { $0.id != target.id }
+
             var source = Parser.playSource(from: html, fallbackTitle: target.title)
 
             if source == nil, let inner = Parser.iframeSource(in: html) {

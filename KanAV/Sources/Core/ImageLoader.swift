@@ -19,6 +19,10 @@ final class ImageLoader {
         cache.countLimit = 240
     }
 
+    func clearCache() {
+        cache.removeAllObjects()
+    }
+
     func image(for url: URL) async -> UIImage? {
         let key = url.absoluteString as NSString
         if let cached = cache.object(forKey: key) {

@@ -1,67 +1,99 @@
 import SwiftUI
 
+/// 「我的」页：收藏 / 最近观看入口 + 外观 / 存储 / 安全 / 关于
 struct LibraryView: View {
 
-    @ObservedObject private var store = HistoryStore.shared
+    @ObservedObject private var favorites = FavoritesStore.shared
+    @ObservedObject private var history = HistoryStore.shared
     @ObservedObject private var lock = AppLock.shared
-    @ObservedObject private var fetcher = WebFetcher.shared
-    @AppStorage("player.useWeb") private var useWebPlayer = false
+
+    @AppStorage("app.theme") private var themeRaw = ThemeMode.system.rawValue
+
+    @State private var isClearing = false
+    @State private var clearMessage: String?
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                sectionTitle("最近观看")
+                header
 
-                if store.items.isEmpty {
-                    emptyHistory
-                } else {
-                    ForEach(store.items) { item in
-                        NavigationLink(destination: PlayerScreen(item: item)) {
-                            VideoRow(item: item)
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                store.remove(item)
-                            } label: {
-                                Label("从记录中移除", systemImage: "trash")
-                            }
-                        }
+                HStack(spacing: 10) {
+                    NavigationLink {
+                        FavoritesView()
+                    } label: {
+                        entryCard(title: "收藏", count: favorites.items.count, icon: "heart.fill")
                     }
+                    .buttonStyle(CardButtonStyle())
+
+                    NavigationLink {
+                        RecentView()
+                    } label: {
+                        entryCard(title: "最近观看", count: history.items.count, icon: "clock.arrow.circlepath")
+                    }
+                    .buttonStyle(CardButtonStyle())
                 }
 
-                sectionTitle("播放")
+                sectionTitle("外观")
+                card {
+                    Picker("主题", selection: $themeRaw) {
+                        ForEach(ThemeMode.allCases) { mode in
+                            Text(mode.title).tag(mode.rawValue)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
 
-                settingsCard {
-                    Toggle(isOn: $useWebPlayer) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("网页播放器")
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                            Text(useWebPlayer
-                                 ? "站点自带播放器，兼容性兜底（控件是网页的）"
-                                 : "内置播放器：m3u8 / 分片统一走资源代理带鉴权，支持倍速、手势、比例切换")
+                sectionTitle("存储")
+                card {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button {
+                            clearCache()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Text(isClearing ? "清理中…" : "清除缓存")
+                                    .font(.system(size: 13, weight: .semibold))
+                                Spacer()
+                                if isClearing {
+                                    ProgressView().scaleEffect(0.7)
+                                }
+                            }
+                            .foregroundColor(Color.kanTextPrimary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.kanSurface)
+                            .cornerRadius(10)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isClearing)
+
+                        if let message = clearMessage {
+                            Text(message)
                                 .font(.system(size: 11))
-                                .foregroundColor(.gray)
+                                .foregroundColor(Color.kanTextSecondary)
+                        } else {
+                            Text("只清图片和播放地址缓存，登录状态与人机验证会保留")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.kanTextSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-                    .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
                 }
 
                 sectionTitle("安全")
-
-                settingsCard {
+                card {
                     Toggle(isOn: $lock.isEnabled) {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("\(lock.biometryName) 解锁")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
+                                .foregroundColor(Color.kanTextPrimary)
                             Text(lock.isBiometryAvailable
                                  ? "启动 App、从后台返回时需要验证"
                                  : "当前设备未设置生物识别，开关会退回密码验证")
                                 .font(.system(size: 11))
-                                .foregroundColor(.gray)
+                                .foregroundColor(Color.kanTextSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
                     }
@@ -69,75 +101,198 @@ struct LibraryView: View {
                 }
 
                 sectionTitle("关于")
-
-                settingsCard {
-                    VStack(alignment: .leading, spacing: 6) {
+                card {
+                    VStack(alignment: .leading, spacing: 5) {
                         Text("博客")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color.kanTextPrimary)
                         Text("数据来源 \(Site.base)")
                             .font(.system(size: 11))
-                            .foregroundColor(.gray)
+                            .foregroundColor(Color.kanTextSecondary)
                         Text("采集用网页（过 Cloudflare 验证），播放用系统 AVPlayer。")
                             .font(.system(size: 11))
-                            .foregroundColor(.gray)
+                            .foregroundColor(Color.kanTextSecondary)
                             .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                sectionTitle("诊断")
-
-                settingsCard {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("列表条目不全时，把最近抓到的页面导出发我，好按真实结构调解析。")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        Button {
-                            exportDebugHTML()
-                        } label: {
-                            Text("导出抓取到的 HTML")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(Color.white.opacity(0.12)))
-                        }
-                        .buttonStyle(.plain)
-
-                        Text(lastFetchSummary)
-                            .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.35))
-
-                        Divider().background(Color.white.opacity(0.08))
-
-                        Text("闪退时先重开 App，再点下面导出日志发我。")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        Button {
-                            exportCrashLog()
-                        } label: {
-                            Text(CrashLogger.hasLog ? "导出崩溃日志" : "暂无崩溃日志")
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Capsule().fill(CrashLogger.hasLog
-                                                           ? Color.kanAccent
-                                                           : Color.white.opacity(0.08)))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!CrashLogger.hasLog)
                     }
                 }
             }
-            .padding(14)
+            .padding(16)
         }
         .background(Color.kanBackground.ignoresSafeArea())
         .navigationTitle("我的")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // MARK: 组件
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle().fill(Color.kanSurface)
+                Image(systemName: "person.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(Color.kanTextSecondary)
+            }
+            .frame(width: 48, height: 48)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("博客")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(Color.kanTextPrimary)
+                Text("\(favorites.items.count) 个收藏 · \(history.items.count) 条记录")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.kanTextSecondary)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func entryCard(title: String, count: Int, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(Color.kanAccent)
+
+            Text(title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(Color.kanTextPrimary)
+
+            Text("\(count)")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(Color.kanTextSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color.kanCard)
+        .cornerRadius(12)
+    }
+
+    private func sectionTitle(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundColor(Color.kanTextSecondary)
+            .padding(.top, 4)
+    }
+
+    private func card<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.kanCard)
+            .cornerRadius(12)
+    }
+
+    private func clearCache() {
+        guard !isClearing else { return }
+        isClearing = true
+        clearMessage = nil
+        Task {
+            let result = await CacheCleaner.clear()
+            await MainActor.run {
+                isClearing = false
+                clearMessage = result.description
+            }
+        }
+    }
+}
+
+// MARK: - 收藏
+
+struct FavoritesView: View {
+
+    @ObservedObject private var store = FavoritesStore.shared
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    private var columns: [GridItem] {
+        let count = sizeClass == .regular ? 3 : 2
+        return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
+    }
+
+    var body: some View {
+        Group {
+            if store.items.isEmpty {
+                emptyState(icon: "heart", text: "还没有收藏\n在播放页点右上角的心形按钮")
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: columns, spacing: 18) {
+                        ForEach(store.items) { item in
+                            NavigationLink(destination: PlayerScreen(item: item)) {
+                                VideoCard(item: item)
+                            }
+                            .buttonStyle(CardButtonStyle())
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    store.remove(item)
+                                } label: {
+                                    Label("取消收藏", systemImage: "heart.slash")
+                                }
+                            }
+                        }
+                    }
+                    .padding(16)
+                }
+            }
+        }
+        .background(Color.kanBackground.ignoresSafeArea())
+        .navigationTitle("收藏")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func emptyState(icon: String, text: String) -> some View {
+        VStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 30))
+                .foregroundColor(Color.kanTextSecondary)
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundColor(Color.kanTextSecondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - 最近观看
+
+struct RecentView: View {
+
+    @ObservedObject private var store = HistoryStore.shared
+
+    var body: some View {
+        Group {
+            if store.items.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 30))
+                        .foregroundColor(Color.kanTextSecondary)
+                    Text("还没有观看记录")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color.kanTextSecondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 14) {
+                        ForEach(store.items) { item in
+                            NavigationLink(destination: PlayerScreen(item: item)) {
+                                VideoRow(item: item)
+                            }
+                            .buttonStyle(CardButtonStyle())
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    store.remove(item)
+                                } label: {
+                                    Label("从记录中移除", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+                    .padding(16)
+                }
+            }
+        }
+        .background(Color.kanBackground.ignoresSafeArea())
+        .navigationTitle("最近观看")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -149,80 +304,5 @@ struct LibraryView: View {
                 }
             }
         }
-    }
-
-    private var emptyHistory: some View {
-        HStack {
-            Spacer()
-            VStack(spacing: 8) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 26))
-                    .foregroundColor(.gray)
-                Text("还没有观看记录")
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray)
-            }
-            Spacer()
-        }
-        .padding(.vertical, 28)
-    }
-
-    private func sectionTitle(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(Color.white.opacity(0.85))
-            .padding(.top, 4)
-    }
-
-    private var lastFetchSummary: String {
-        let count = fetcher.lastHTML.count
-        if count == 0 {
-            return "还没有抓取记录（先浏览一次列表）"
-        }
-        return "上次抓取：\(count) 字符"
-    }
-
-    private func exportDebugHTML() {
-        let html = fetcher.lastHTML
-        guard !html.isEmpty else { return }
-
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("kanav-debug.html")
-        try? html.write(to: url, atomically: true, encoding: .utf8)
-        share(url)
-    }
-
-    private func exportCrashLog() {
-        let text = CrashLogger.logText
-        guard !text.isEmpty else { return }
-
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("kanav-crash.log")
-        try? text.write(to: url, atomically: true, encoding: .utf8)
-        share(url)
-    }
-
-    private func share(_ url: URL) {
-        guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
-              let root = scene.keyWindow?.rootViewController
-        else { return }
-
-        let activity = UIActivityViewController(activityItems: [url], applicationActivities: nil)
-        if let popover = activity.popoverPresentationController {
-            popover.sourceView = root.view
-            popover.sourceRect = CGRect(
-                x: root.view.bounds.midX,
-                y: root.view.bounds.midY,
-                width: 1,
-                height: 1
-            )
-        }
-        root.present(activity, animated: true)
-    }
-
-    private func settingsCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content()
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.kanCard)
-            .cornerRadius(12)
     }
 }

@@ -24,7 +24,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("博客")
                     .font(.system(size: 28, weight: .heavy))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.kanTextPrimary)
                     .tracking(0.4)
                 Text("40,179 部影片 · 每日更新")
                     .font(.system(size: 11, weight: .medium))
@@ -36,7 +36,7 @@ struct HomeView: View {
             NavigationLink(destination: SearchView()) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color.kanTextPrimary)
                     .frame(width: 40, height: 40)
                     .background(Circle().fill(Color.kanSurface))
             }
@@ -82,7 +82,7 @@ struct HomeView: View {
         } label: {
             Text(category.name)
                 .font(.system(size: 13, weight: active ? .bold : .medium))
-                .foregroundColor(active ? .white : Color.kanTextSecondary)
+                .foregroundColor(active ? Color.kanTextPrimary : Color.kanTextSecondary)
                 .padding(.horizontal, 15)
                 .padding(.vertical, 8)
                 .background(
@@ -113,7 +113,7 @@ struct CategoryPicker: View {
                                 HStack {
                                     Text(item.name)
                                         .font(.system(size: 14))
-                                        .foregroundColor(.white)
+                                        .foregroundColor(Color.kanTextPrimary)
                                     Spacer()
                                     if item.id == selected.id {
                                         Image(systemName: "checkmark")
@@ -217,7 +217,7 @@ struct CategoryFeed: View {
                     Task { await model.loadFirstPage() }
                 }
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Color.kanTextPrimary)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 8)
                 .background(Capsule().fill(Color.kanAccent))

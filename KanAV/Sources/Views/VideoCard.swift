@@ -67,7 +67,7 @@ struct VideoCard: View {
 
                 Text(translated ?? item.cleanTitle)
                     .font(.system(size: 12.5, weight: .medium))
-                    .foregroundColor(translated == nil ? .white : Color.kanTranslated)
+                    .foregroundColor(translated == nil ? Color.kanTextPrimary : Color.kanTranslated)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .topLeading)
@@ -97,7 +97,7 @@ struct VideoCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.white.opacity(0.07), lineWidth: 0.5)
+                .stroke(Color.kanSurface, lineWidth: 0.5)
         )
         .overlay(alignment: .bottomTrailing) {
             durationBadge
@@ -108,7 +108,7 @@ struct VideoCard: View {
         if !item.duration.isEmpty {
             Text(item.duration)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(Color.kanTextPrimary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2.5)
                 .background(Capsule().fill(Color.black.opacity(0.62)))
@@ -136,7 +136,7 @@ struct VideoRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                    .stroke(Color.kanSurface, lineWidth: 0.5)
             )
 
             VStack(alignment: .leading, spacing: 4) {
@@ -147,7 +147,7 @@ struct VideoRow: View {
                 }
                 Text(translated ?? item.cleanTitle)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(translated == nil ? .white : Color.kanTranslated)
+                    .foregroundColor(translated == nil ? Color.kanTextPrimary : Color.kanTranslated)
                     .lineLimit(2)
                 Text(item.subtitle)
                     .font(.system(size: 11))

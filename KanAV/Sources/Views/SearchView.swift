@@ -30,7 +30,7 @@ struct SearchView: View {
 
             TextField("番号 / 关键词", text: $keyword)
                 .textFieldStyle(.plain)
-                .foregroundColor(.white)
+                .foregroundColor(Color.kanTextPrimary)
                 .submitLabel(.search)
                 .disableAutocorrection(true)
                 .autocapitalization(.none)
@@ -55,7 +55,7 @@ struct SearchView: View {
                 Task { await performSearch() }
             }
             .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(.white)
+            .foregroundColor(Color.kanTextPrimary)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             .background(Capsule().fill(Color.kanAccent))
