@@ -132,7 +132,7 @@ struct LibraryView: View {
                         if dailyReminder {
                             DatePicker(
                                 "时间",
-                                selection: $reminderTime,
+                                selection: reminderTime,
                                 displayedComponents: .hourAndMinute
                             )
                             .font(.system(size: 13))
