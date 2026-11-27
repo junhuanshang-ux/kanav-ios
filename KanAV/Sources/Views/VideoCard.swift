@@ -48,7 +48,6 @@ struct RemoteImage: View {
 struct VideoCard: View {
 
     let item: VideoItem
-    var coverHeight: CGFloat = 116
 
     @ObservedObject private var translator = TitleTranslator.shared
 
@@ -91,8 +90,9 @@ struct VideoCard: View {
             .frame(height: 44)
             .allowsHitTesting(false)
         }
+        // 封面本身就是 16:9，按比例排：同一行列宽相同 → 高度自然一致，也不会裁掉画面
+        .aspectRatio(16.0 / 9.0, contentMode: .fit)
         .frame(maxWidth: .infinity)
-        .frame(height: coverHeight)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(

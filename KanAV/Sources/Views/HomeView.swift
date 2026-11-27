@@ -163,10 +163,6 @@ struct CategoryFeed: View {
         return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
     }
 
-    private var coverHeight: CGFloat {
-        sizeClass == .regular ? 168 : 116
-    }
-
     init(category: Category) {
         self.category = category
         _model = StateObject(wrappedValue: FeedViewModel(category: category))
@@ -177,7 +173,7 @@ struct CategoryFeed: View {
             LazyVGrid(columns: columns, spacing: 18) {
                 ForEach(model.items) { item in
                     NavigationLink(destination: PlayerScreen(item: item)) {
-                        VideoCard(item: item, coverHeight: coverHeight)
+                        VideoCard(item: item)
                     }
                     .buttonStyle(CardButtonStyle())
                     .onAppear {
