@@ -12,7 +12,7 @@ struct HomeView: View {
         VStack(spacing: 0) {
             header
             categoryBar
-            CategoryFeed(category: selected)
+            CategoryFeed(category: selected, showsHero: selected.basePath == "/latest-updates/")
                 .id(selected.id)
         }
         .background(Color.kanBackground.ignoresSafeArea())
@@ -209,39 +209,72 @@ struct CategoryPicker: View {
 struct CategoryFeed: View {
 
     let category: Category
+    var showsHero: Bool = false
 
     @StateObject private var model: FeedViewModel
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     private var columns: [GridItem] {
         let count = sizeClass == .regular ? 3 : 2
-        return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
+        return Array(repeating: GridItem(.flexible(), spacing: Spacing.md), count: count)
     }
 
-    init(category: Category) {
+    private let heroCount = 8
+
+    init(category: Category, showsHero: Bool = false) {
         self.category = category
+        self.showsHero = showsHero
         _model = StateObject(wrappedValue: FeedViewModel(category: category))
+    }
+
+    private var gridItems: [VideoItem] {
+        showsHero ? Array(model.items.dropFirst(heroCount)) : model.items
     }
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 18) {
-                ForEach(model.items) { item in
-                    NavigationLink(destination: PlayerScreen(item: item)) {
-                        VideoCard(item: item)
-                    }
-                    .buttonStyle(CardButtonStyle())
-                    .onAppear {
-                        if item.id == model.items.last?.id {
-                            Task { await model.loadNextPage() }
+            if model.isLoading && model.items.isEmpty {
+                skeletonGrid
+            } else if let message = model.errorText, model.items.isEmpty {
+                EmptyStateView(
+                    icon: "wifi.exclamationmark",
+                    title: "加载失败",
+                    message: message,
+                    actionTitle: "重试"
+                ) {
+                    Task { await model.loadFirstPage() }
+                }
+                .padding(.top, 70)
+            } else if model.items.isEmpty {
+                EmptyStateView(
+                    icon: "film",
+                    title: "这里还没有内容",
+                    message: "换个分类看看"
+                )
+                .padding(.top, 70)
+            } else {
+                if showsHero {
+                    heroRow
+                }
+
+                LazyVGrid(columns: columns, spacing: Spacing.xl) {
+                    ForEach(gridItems) { item in
+                        NavigationLink(destination: PlayerScreen(item: item)) {
+                            VideoCard(item: item)
+                        }
+                        .buttonStyle(CardButtonStyle())
+                        .onAppear {
+                            if item.id == model.items.last?.id {
+                                Task { await model.loadNextPage() }
+                            }
                         }
                     }
                 }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 6)
+                .padding(.horizontal, Spacing.lg)
+                .padding(.top, showsHero ? Spacing.sm : Spacing.md)
 
-            footer
+                footer
+            }
         }
         .background(Color.kanBackground)
         .task {
@@ -251,39 +284,50 @@ struct CategoryFeed: View {
         }
     }
 
+    // MARK: 今日更新
+
+    private var heroRow: some View {
+        VStack(alignment: .leading, spacing: Spacing.md) {
+            SectionHeader(title: "今日更新", subtitle: "\(model.items.count) 部新片")
+                .padding(.horizontal, Spacing.lg)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Spacing.md) {
+                    ForEach(Array(model.items.prefix(heroCount))) { item in
+                        NavigationLink(destination: PlayerScreen(item: item)) {
+                            HeroCard(item: item)
+                        }
+                        .buttonStyle(CardButtonStyle())
+                    }
+                }
+                .padding(.horizontal, Spacing.lg)
+            }
+        }
+        .padding(.bottom, Spacing.lg)
+    }
+
+    // MARK: 骨架
+
+    private var skeletonGrid: some View {
+        LazyVGrid(columns: columns, spacing: Spacing.xl) {
+            ForEach(0..<6, id: \.self) { _ in
+                CardSkeleton()
+            }
+        }
+        .padding(.horizontal, Spacing.lg)
+        .padding(.top, Spacing.md)
+    }
+
     @ViewBuilder private var footer: some View {
         if model.isLoading && !model.items.isEmpty {
-            HStack {
-                Spacer()
-                ProgressView().tint(.white)
-                Spacer()
-            }
-            .padding(.vertical, 20)
-        } else if let message = model.errorText, model.items.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: "wifi.exclamationmark")
-                    .font(.system(size: 26))
-                    .foregroundColor(.gray)
-                Text(message)
-                    .font(.system(size: 13))
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                Button("重试") {
-                    Task { await model.loadFirstPage() }
-                }
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(Color.kanTextPrimary)
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
-                .background(Capsule().fill(Color.kanAccent))
-            }
-            .padding(.vertical, 40)
-            .frame(maxWidth: .infinity)
+            ProgressView()
+                .tint(Color.kanTextSecondary)
+                .padding(.vertical, Spacing.xl)
         } else if !model.items.isEmpty && !model.hasMore {
             Text("已经到底了")
-                .font(.system(size: 12))
-                .foregroundColor(.gray)
-                .padding(.vertical, 18)
+                .font(.system(size: 11))
+                .foregroundColor(Color.kanTextSecondary)
+                .padding(.vertical, Spacing.xl)
         }
     }
 }

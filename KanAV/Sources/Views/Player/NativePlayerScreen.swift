@@ -239,20 +239,33 @@ struct NativePlayerScreen: View {
     }
 
     private var titleRow: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
-                if let code = activeItem.code {
-                    Text(code)
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundColor(Color.kanAccent)
+        HStack(alignment: .top, spacing: Spacing.md) {
+            VStack(alignment: .leading, spacing: Spacing.sm) {
+                HStack(spacing: Spacing.sm) {
+                    if let code = activeItem.code {
+                        Text(code)
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(Color.kanAccent))
+                    }
+                    if !activeItem.duration.isEmpty {
+                        HStack(spacing: 3) {
+                            Image(systemName: "clock")
+                                .font(.system(size: 9, weight: .semibold))
+                            Text(activeItem.duration)
+                                .font(.system(size: 10, weight: .medium))
+                        }
+                        .foregroundColor(Color.kanTextSecondary)
+                    }
                 }
+
                 Text(activeItem.title)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(Color.kanTextPrimary)
+                    .lineSpacing(2)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(activeItem.subtitle)
-                    .font(.system(size: 11))
-                    .foregroundColor(Color.kanTextSecondary)
             }
 
             Spacer(minLength: 0)
@@ -261,12 +274,14 @@ struct NativePlayerScreen: View {
                 FavoritesStore.shared.toggle(activeItem)
             } label: {
                 Image(systemName: isFavorite ? "heart.fill" : "heart")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(isFavorite ? Color.kanAccent : Color.kanTextSecondary)
                     .frame(width: 40, height: 40)
                     .background(Circle().fill(Color.kanSurface))
+                    .overlay(Circle().stroke(Color.kanCard, lineWidth: 0.5))
             }
             .buttonStyle(.plain)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: isFavorite)
         }
     }
 
