@@ -44,21 +44,39 @@ struct RemoteImage: View {
     }
 }
 
-/// 封面卡片。封面高度固定，避免不同比例的海报把网格撑得参差不齐。
+/// 封面卡片：封面固定高度 + 番号 + 中文标题（自动翻译）。
 struct VideoCard: View {
 
     let item: VideoItem
     var coverHeight: CGFloat = 112
 
+    @ObservedObject private var translator = TitleTranslator.shared
+
+    private var displayTitle: String {
+        translator.translated(item.title) ?? item.cleanTitle
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             coverFrame
-            Text(item.title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white)
-                .lineLimit(2)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32, alignment: .topLeading)
+
+            VStack(alignment: .leading, spacing: 2) {
+                if let code = item.code {
+                    Text(code)
+                        .font(.system(size: 10, weight: .heavy))
+                        .foregroundColor(Color.kanAccent)
+                        .lineLimit(1)
+                }
+                Text(displayTitle)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: 30, maxHeight: 30, alignment: .topLeading)
+            }
+        }
+        .onAppear {
+            translator.request(item.title)
         }
     }
 
@@ -70,9 +88,9 @@ struct VideoCard: View {
         .frame(maxWidth: .infinity)
         .frame(height: coverHeight)
         .clipped()
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
         )
         .overlay(alignment: .bottomTrailing) {
@@ -87,7 +105,7 @@ struct VideoCard: View {
                 .foregroundColor(.white)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
-                .background(Color.black.opacity(0.7))
+                .background(Color.black.opacity(0.72))
                 .cornerRadius(4)
                 .padding(6)
         }
@@ -98,6 +116,12 @@ struct VideoCard: View {
 struct VideoRow: View {
     let item: VideoItem
 
+    @ObservedObject private var translator = TitleTranslator.shared
+
+    private var displayTitle: String {
+        translator.translated(item.title) ?? item.cleanTitle
+    }
+
     var body: some View {
         HStack(spacing: 10) {
             ZStack {
@@ -106,10 +130,15 @@ struct VideoRow: View {
             }
             .frame(width: 96, height: 54)
             .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.title)
+            VStack(alignment: .leading, spacing: 3) {
+                if let code = item.code {
+                    Text(code)
+                        .font(.system(size: 9, weight: .heavy))
+                        .foregroundColor(Color.kanAccent)
+                }
+                Text(displayTitle)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white)
                     .lineLimit(2)
@@ -121,5 +150,8 @@ struct VideoRow: View {
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
+        .onAppear {
+            translator.request(item.title)
+        }
     }
 }

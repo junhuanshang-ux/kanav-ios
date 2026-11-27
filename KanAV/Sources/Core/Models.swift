@@ -9,13 +9,36 @@ enum Site {
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
     /// 首页横向 chips 上直接露出的常用分类
-    static let quickCategories: [Category] = Array(allCategories.prefix(8))
+    static let quickCategories: [Category] = [
+        Category(name: "最新", basePath: "/latest-updates/"),
+        Category(name: "热门", basePath: "/hot/"),
+        Category(name: "中文字幕", basePath: "/categories/chinese-subtitle/"),
+        Category(name: "新作", basePath: "/new-release/"),
+        Category(name: "無碼解放", basePath: "/categories/uncensored/"),
+        Category(name: "制服誘惑", basePath: "/categories/uniform/"),
+        Category(name: "巨乳", basePath: "/tags/big-tits/"),
+        Category(name: "人妻", basePath: "/tags/wife/")
+    ]
 
     /// 全部分类，按站点导航分组（路径来自 REA 抓取的真实标签树）
     static let categoryGroups: [CategoryGroup] = [
-        CategoryGroup(group: "热门", items: [
+        CategoryGroup(group: "主题", items: [
+            Category(name: "中文字幕", basePath: "/categories/chinese-subtitle/"),
+            Category(name: "角色劇情", basePath: "/categories/roleplay/"),
+            Category(name: "制服誘惑", basePath: "/categories/uniform/"),
+            Category(name: "絲襪美腿", basePath: "/categories/pantyhose/"),
+            Category(name: "直接開啪", basePath: "/categories/sex-only/"),
+            Category(name: "多P群交", basePath: "/categories/groupsex/"),
+            Category(name: "主奴調教", basePath: "/categories/bdsm/"),
+            Category(name: "男友視角", basePath: "/categories/pov/"),
+            Category(name: "凌辱快感", basePath: "/categories/insult/"),
+            Category(name: "盜攝偷拍", basePath: "/categories/private-cam/"),
+            Category(name: "無碼解放", basePath: "/categories/uncensored/"),
+            Category(name: "女同歡愉", basePath: "/categories/lesbian/")
+        ]),
+        CategoryGroup(group: "排序", items: [
             Category(name: "最新", basePath: "/latest-updates/"),
-            Category(name: "热度", basePath: "/hot/"),
+            Category(name: "熱度", basePath: "/hot/"),
             Category(name: "新作", basePath: "/new-release/")
         ]),
         CategoryGroup(group: "衣著", items: [
@@ -173,6 +196,25 @@ struct VideoItem: Identifiable, Hashable, Codable {
 
     var subtitle: String {
         duration.isEmpty ? "点击播放" : duration
+    }
+
+    /// 片名开头的番号，如 ABF-403 / SDJS-388
+    var code: String? {
+        let pattern = "^([A-Za-z]{2,6}-?[0-9]{2,5})"
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let ns = title as NSString
+        guard let match = regex.firstMatch(in: title, range: NSRange(location: 0, length: ns.length)) else {
+            return nil
+        }
+        return ns.substring(with: match.range(at: 1)).uppercased()
+    }
+
+    /// 去掉番号后的标题，卡片上更干净
+    var cleanTitle: String {
+        guard let code = code, let range = title.range(of: code) else { return title }
+        var rest = String(title[range.upperBound...])
+        rest = rest.trimmingCharacters(in: CharacterSet(charactersIn: " -_·"))
+        return rest.isEmpty ? title : rest
     }
 
     static func == (lhs: VideoItem, rhs: VideoItem) -> Bool { lhs.id == rhs.id }

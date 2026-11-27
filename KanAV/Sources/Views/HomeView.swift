@@ -7,16 +7,43 @@ struct HomeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            header
             categoryBar
             CategoryFeed(category: selected)
                 .id(selected.id)
         }
         .background(Color.kanBackground.ignoresSafeArea())
-        .navigationTitle("博客")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
         .sheet(isPresented: $showCategoryPicker) {
             CategoryPicker(selected: $selected, isPresented: $showCategoryPicker)
         }
+    }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("博客")
+                    .font(.system(size: 26, weight: .heavy))
+                    .foregroundColor(.white)
+                Text("4 万部影片 · 每日更新")
+                    .font(.system(size: 11))
+                    .foregroundColor(Color.white.opacity(0.45))
+            }
+
+            Spacer(minLength: 0)
+
+            NavigationLink(destination: SearchView()) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(Color.kanCard))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
     }
 
     private var categoryBar: some View {
