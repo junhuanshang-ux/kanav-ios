@@ -368,8 +368,11 @@ struct NativePlayerScreen: View {
             let pageURL = Site.url(target.playPath)
             var html = try await Net.html(path: target.playPath, allowManualCheck: false)
 
-            // 播放页里同时有「猜你喜欢」，先解析出来
-            recommendations = Parser.videos(in: html).filter { $0.id != target.id }
+            // 播放页里同时有「猜你喜欢」，按厂牌相似度重排
+            recommendations = rankRecommendations(
+                Parser.videos(in: html).filter { $0.id != target.id },
+                for: target
+            )
 
             var source = Parser.playSource(from: html, fallbackTitle: target.title)
 
@@ -399,6 +402,18 @@ struct NativePlayerScreen: View {
             streamURL = nil
             resolveError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             isResolving = false
+        }
+    }
+
+    /// 同厂牌（番号前缀相同）的片更相似，排在前面
+    private func rankRecommendations(_ list: [VideoItem], for current: VideoItem) -> [VideoItem] {
+        let brand = current.code?.split(separator: "-").first.map(String.init)
+
+        return list.sorted { left, right in
+            let leftMatch = brand != nil && left.code?.hasPrefix(brand!) == true
+            let rightMatch = brand != nil && right.code?.hasPrefix(brand!) == true
+            if leftMatch != rightMatch { return leftMatch }
+            return false
         }
     }
 

@@ -10,6 +10,27 @@ struct LibraryView: View {
 
     @AppStorage("app.theme") private var themeRaw = ThemeMode.system.rawValue
     @AppStorage("player.autoNext") private var autoNext = true
+    @AppStorage("notify.daily") private var dailyReminder = false
+    @AppStorage("notify.hour") private var reminderHour = 20
+    @AppStorage("notify.minute") private var reminderMinute = 0
+    @AppStorage("gesture.mirror") private var mirrorGesture = false
+    @AppStorage("gesture.boostSpeed") private var boostSpeed = 2.0
+
+    private var reminderTime: Binding<Date> {
+        Binding(
+            get: {
+                var components = DateComponents()
+                components.hour = reminderHour
+                components.minute = reminderMinute
+                return Calendar.current.date(from: components) ?? Date()
+            },
+            set: { newValue in
+                let components = Calendar.current.dateComponents([.hour, .minute], from: newValue)
+                reminderHour = components.hour ?? 20
+                reminderMinute = components.minute ?? 0
+            }
+        )
+    }
 
     @State private var isClearing = false
     @State private var clearMessage: String?
@@ -65,6 +86,89 @@ struct LibraryView: View {
                         }
                     }
                     .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
+                }
+
+                NavigationLink {
+                    ComboFilterView()
+                } label: {
+                    HStack(spacing: Spacing.md) {
+                        Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(Color.kanAccent)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("组合筛选")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color.kanTextPrimary)
+                            Text("同时选多个标签，取交集")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.kanTextSecondary)
+                        }
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color.kanTextSecondary)
+                    }
+                    .padding(Spacing.md)
+                    .background(Color.kanCard)
+                    .cornerRadius(Radius.md)
+                }
+                .buttonStyle(CardButtonStyle())
+
+                sectionTitle("提醒")
+                card {
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Toggle(isOn: $dailyReminder) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("每日更新提醒")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color.kanTextPrimary)
+                                Text("到点提醒今天有上新")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Color.kanTextSecondary)
+                            }
+                        }
+                        .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
+
+                        if dailyReminder {
+                            DatePicker(
+                                "时间",
+                                selection: $reminderTime,
+                                displayedComponents: .hourAndMinute
+                            )
+                            .font(.system(size: 13))
+                            .foregroundColor(Color.kanTextPrimary)
+                            .datePickerStyle(.compact)
+                        }
+                    }
+                }
+
+                sectionTitle("手势")
+                card {
+                    VStack(alignment: .leading, spacing: Spacing.md) {
+                        Toggle(isOn: $mirrorGesture) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("左右手模式")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color.kanTextPrimary)
+                                Text("左半屏调音量、右半屏调亮度")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(Color.kanTextSecondary)
+                            }
+                        }
+                        .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
+
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("长按快进倍率")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color.kanTextPrimary)
+                            Picker("长按快进倍率", selection: $boostSpeed) {
+                                Text("2×").tag(2.0)
+                                Text("3×").tag(3.0)
+                                Text("4×").tag(4.0)
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                    }
                 }
 
                 sectionTitle("存储")
@@ -145,6 +249,32 @@ struct LibraryView: View {
         .background(Color.kanBackground.ignoresSafeArea())
         .navigationTitle("我的")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: dailyReminder) { enabled in
+            applyReminder(enabled)
+        }
+        .onChange(of: reminderHour) { _ in
+            if dailyReminder { NotificationManager.shared.scheduleDaily(hour: reminderHour, minute: reminderMinute) }
+        }
+        .onChange(of: reminderMinute) { _ in
+            if dailyReminder { NotificationManager.shared.scheduleDaily(hour: reminderHour, minute: reminderMinute) }
+        }
+    }
+
+    private func applyReminder(_ enabled: Bool) {
+        guard enabled else {
+            NotificationManager.shared.cancel()
+            return
+        }
+        Task {
+            let granted = await NotificationManager.shared.requestAuthorization()
+            await MainActor.run {
+                if granted {
+                    NotificationManager.shared.scheduleDaily(hour: reminderHour, minute: reminderMinute)
+                } else {
+                    dailyReminder = false
+                }
+            }
+        }
     }
 
     // MARK: 组件

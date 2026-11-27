@@ -87,6 +87,8 @@ struct PlayerGestureLayer: View {
     /// 长按快进
     @State private var isBoosting = false
     @State private var savedSpeed: Double = 1.0
+    @AppStorage("gesture.mirror") private var mirrorGesture = false
+    @AppStorage("gesture.boostSpeed") private var boostSpeed = 2.0
     @State private var isHolding = false
     @State private var holdWork: DispatchWorkItem?
 
@@ -137,7 +139,7 @@ struct PlayerGestureLayer: View {
         guard !isBoosting else { return }
         savedSpeed = engine.speed
         isBoosting = true
-        engine.setSpeed(2.0)
+        engine.setSpeed(boostSpeed)
 
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
@@ -158,12 +160,16 @@ struct PlayerGestureLayer: View {
                         dragMode = .seek
                         baseTime = engine.currentTime
                         previewTime = engine.currentTime
-                    } else if value.startLocation.x < size.width / 2 {
-                        dragMode = .brightness
-                        baseBrightness = SystemBrightness.current
                     } else {
-                        dragMode = .volume
-                        baseVolume = VolumeControl.shared.current
+                        let onLeft = value.startLocation.x < size.width / 2
+                        let wantsBrightness = mirrorGesture ? !onLeft : onLeft
+                        if wantsBrightness {
+                            dragMode = .brightness
+                            baseBrightness = SystemBrightness.current
+                        } else {
+                            dragMode = .volume
+                            baseVolume = VolumeControl.shared.current
+                        }
                     }
                 }
 
