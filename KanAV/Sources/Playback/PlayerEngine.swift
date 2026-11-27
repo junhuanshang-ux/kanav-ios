@@ -96,9 +96,8 @@ final class PlayerEngine: NSObject, ObservableObject {
         let resolvedUA = userAgent ?? Site.userAgent
         let cookie = Net.cookieHeader(for: url)
 
-        // 流代理：接管 m3u8 / 分片 / 密钥，统一带鉴权。
-        // 默认关闭 —— 先保证不崩，确认稳定后再在设置里打开。
-        let useProxy = UserDefaults.standard.object(forKey: "player.useProxy") as? Bool ?? false
+        // 流代理：接管 m3u8 / 分片 / 密钥，统一带鉴权（Range 越界问题已修）
+        let useProxy = UserDefaults.standard.object(forKey: "player.useProxy") as? Bool ?? true
         let asset: AVURLAsset
         if useProxy {
             let proxyURL = StreamProxyLoader.proxyURL(for: url)
@@ -123,12 +122,13 @@ final class PlayerEngine: NSObject, ObservableObject {
 
         let item = AVPlayerItem(asset: asset)
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
-        // 起播优先：只攒 1.2 秒就开播，明显比默认快
-        item.preferredForwardBufferDuration = 1.2
+        // 缓冲策略：少攒就起播（快速响应），但保留足够余量应付拖动
+        item.preferredForwardBufferDuration = 6
         self.item = item
         hasEnded = false
         player.replaceCurrentItem(with: item)
-        player.automaticallyWaitsToMinimizeStalling = true
+        // 关键：不要为了「防卡顿」而等到缓冲充足才播，那样起播会慢好几秒
+        player.automaticallyWaitsToMinimizeStalling = false
 
         observe(item: item)
         addTimeObserver()
@@ -180,7 +180,8 @@ final class PlayerEngine: NSObject, ObservableObject {
         guard duration > 0 || item != nil else { return }
         let clamped = max(0, min(seconds, max(duration - 0.15, 0)))
         let time = CMTime(seconds: clamped, preferredTimescale: 600)
-        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] _ in
+        // 宽松容差：直接跳到最近关键帧，拖动才跟手。精确 seek 每帧都要解码，会明显卡。
+        player.seek(to: time, toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.currentTime = clamped
             }

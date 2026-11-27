@@ -41,7 +41,7 @@ struct LibraryView: View {
                                 .foregroundColor(.white)
                             Text(useWebPlayer
                                  ? "站点自带播放器，兼容性兜底（控件是网页的）"
-                                 : "内置播放器：m3u8 / 分片统一走资源代理带鉴权，支持倍速、手势、画中画")
+                                 : "内置播放器：m3u8 / 分片统一走资源代理带鉴权，支持倍速、手势、比例切换")
                                 .font(.system(size: 11))
                                 .foregroundColor(.gray)
                                 .fixedSize(horizontal: false, vertical: true)

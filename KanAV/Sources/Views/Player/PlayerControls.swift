@@ -1,10 +1,11 @@
 import AVFoundation
 import SwiftUI
 
+/// 自绘播放控件。整层透明，只靠按钮自带的黑底和文字阴影保证可读性，
+/// 不遮挡画面。
 struct PlayerControls: View {
 
     @ObservedObject var engine: PlayerEngine
-    @ObservedObject var pip: PiPManager
 
     let title: String
     let isFullscreen: Bool
@@ -18,21 +19,12 @@ struct PlayerControls: View {
     private let speeds: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
 
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color.black.opacity(0.65), Color.black.opacity(0.05), Color.black.opacity(0.8)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .allowsHitTesting(false)
-
-            VStack(spacing: 0) {
-                topBar
-                Spacer(minLength: 0)
-                centerBar
-                Spacer(minLength: 0)
-                bottomBar
-            }
+        VStack(spacing: 0) {
+            topBar
+            Spacer(minLength: 0)
+            centerBar
+            Spacer(minLength: 0)
+            bottomBar
         }
     }
 
@@ -54,14 +46,9 @@ struct PlayerControls: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(.white)
                 .lineLimit(1)
+                .shadow(color: .black.opacity(0.75), radius: 3, x: 0, y: 1)
 
             Spacer(minLength: 4)
-
-            if pip.isSupported {
-                iconButton(pip.isActive ? "pip.exit" : "pip.enter") {
-                    pip.toggle()
-                }
-            }
         }
         .padding(.horizontal, 10)
         .padding(.top, 6)
@@ -77,6 +64,7 @@ struct PlayerControls: View {
                 Image(systemName: "gobackward.15")
                     .font(.system(size: 25, weight: .regular))
                     .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.7), radius: 4)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -88,6 +76,7 @@ struct PlayerControls: View {
                     .font(.system(size: 38, weight: .regular))
                     .foregroundColor(.white)
                     .frame(width: 56, height: 56)
+                    .shadow(color: .black.opacity(0.7), radius: 5)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -98,6 +87,7 @@ struct PlayerControls: View {
                 Image(systemName: "goforward.15")
                     .font(.system(size: 25, weight: .regular))
                     .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.7), radius: 4)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -113,15 +103,18 @@ struct PlayerControls: View {
             HStack(spacing: 10) {
                 Text(PlayerHUDView.timeText(isScrubbing ? scrubTime : engine.currentTime))
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(.white.opacity(0.95))
+                    .shadow(color: .black.opacity(0.75), radius: 2)
 
                 Text("/")
                     .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.35))
+                    .foregroundColor(.white.opacity(0.4))
+                    .shadow(color: .black.opacity(0.75), radius: 2)
 
                 Text(PlayerHUDView.timeText(engine.duration))
                     .font(.system(size: 11, weight: .medium).monospacedDigit())
-                    .foregroundColor(.white.opacity(0.55))
+                    .foregroundColor(.white.opacity(0.6))
+                    .shadow(color: .black.opacity(0.75), radius: 2)
 
                 Spacer(minLength: 2)
 
@@ -148,11 +141,11 @@ struct PlayerControls: View {
 
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color.white.opacity(0.22))
+                    .fill(Color.white.opacity(0.28))
                     .frame(width: width, height: 3)
 
                 Capsule()
-                    .fill(Color.white.opacity(0.34))
+                    .fill(Color.white.opacity(0.42))
                     .frame(width: width * bufferRatio, height: 3)
 
                 Capsule()
@@ -165,6 +158,7 @@ struct PlayerControls: View {
                     .offset(x: max(0, min(width * ratio - 5, width - 10)))
             }
             .frame(height: 22)
+            .background(Color.black.opacity(0.001))
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
@@ -183,6 +177,7 @@ struct PlayerControls: View {
             )
         }
         .frame(height: 22)
+        .shadow(color: .black.opacity(0.4), radius: 2)
     }
 
     // MARK: 控件
@@ -204,6 +199,7 @@ struct PlayerControls: View {
             Text(speedText(engine.speed))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.7), radius: 2)
                 .frame(minWidth: 32, minHeight: 26)
         }
     }
@@ -214,7 +210,8 @@ struct PlayerControls: View {
         } label: {
             Text(engine.gravityTitle())
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(.white.opacity(0.95))
+                .shadow(color: .black.opacity(0.7), radius: 2)
                 .frame(minWidth: 32, minHeight: 26)
         }
         .buttonStyle(.plain)
@@ -271,7 +268,8 @@ struct PlayerControls: View {
         } label: {
             Image(systemName: "waveform")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(.white.opacity(0.95))
+                .shadow(color: .black.opacity(0.7), radius: 2)
                 .frame(width: 28, height: 26)
         }
     }
@@ -280,7 +278,8 @@ struct PlayerControls: View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(active ? Color.kanAccent : Color.white.opacity(0.9))
+                .foregroundColor(active ? Color.kanAccent : Color.white.opacity(0.95))
+                .shadow(color: .black.opacity(0.7), radius: 2)
                 .frame(width: 28, height: 26)
                 .contentShape(Rectangle())
         }

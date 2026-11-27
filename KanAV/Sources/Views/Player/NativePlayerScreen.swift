@@ -10,7 +10,6 @@ struct NativePlayerScreen: View {
     var onProgress: ((Double, Double) -> Void)?
 
     @StateObject private var engine = PlayerEngine()
-    @StateObject private var pip = PiPManager()
     @ObservedObject private var history = HistoryStore.shared
 
     @State private var activeItem: VideoItem
@@ -86,11 +85,9 @@ struct NativePlayerScreen: View {
 
     private var baseLayer: some View {
         ZStack {
-            PlayerSurface(player: engine.player, gravity: engine.gravity) { layer in
-                pip.attach(layer: layer)
-            }
-            // 全屏时让视频层铺到屏幕边缘（控件层仍留在安全区内）
-            .ignoresSafeArea(.all, edges: isFullscreen ? .all : [])
+            PlayerSurface(player: engine.player, gravity: engine.gravity) { _ in }
+                // 全屏时让视频层铺到屏幕边缘（控件层仍留在安全区内）
+                .ignoresSafeArea(.all, edges: isFullscreen ? .all : [])
             .transaction { transaction in
                 transaction.animation = nil
                 transaction.disablesAnimations = true
@@ -120,7 +117,6 @@ struct NativePlayerScreen: View {
         if !isResolving, resolveError == nil {
             PlayerControls(
                 engine: engine,
-                pip: pip,
                 title: activeItem.title,
                 isFullscreen: isFullscreen,
                 onBack: handleBack,
@@ -271,7 +267,6 @@ struct NativePlayerScreen: View {
 
     private func handleDisappear() {
         engine.unload()
-        pip.stop()
         hideWork?.cancel()
         UIApplication.shared.isIdleTimerDisabled = false
         OrientationSupport.restoreDefault()
