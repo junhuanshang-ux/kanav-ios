@@ -161,10 +161,13 @@ enum Parser {
         return nil
     }
 
-    /// 列表页是否还有下一页
+    /// 列表页是否还有下一页。jable 用路径式分页：/latest-updates/2/
     static func hasNextPage(in html: String, currentPage: Int) -> Bool {
         let next = currentPage + 1
-        return html.contains("?page=\(next)\"") || html.contains("/page/\(next)/")
+        if html.contains("/\(next)/\"") { return true }
+        if html.contains("?page=\(next)") { return true }
+        // 兜底：页面上出现「最後 »」说明还有后续页
+        return currentPage == 1 && html.contains("最後")
     }
 
     // MARK: 详情 / 播放页

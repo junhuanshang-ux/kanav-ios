@@ -9,12 +9,16 @@ enum Site {
     static let userAgent =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
-    /// 顶部分类。只保留已在站点导航里确认存在的路径。
-    /// 之前猜的 /categories/xxx/ 全部 404，是"采集不到"的直接原因。
+    /// 顶部分类。路径全部来自站点真实导航（REA 抓取确认）。
     static let categories: [Category] = [
         Category(id: 0, name: "最新", basePath: "/latest-updates/"),
         Category(id: 1, name: "热门", basePath: "/hot/"),
-        Category(id: 2, name: "首页", basePath: "/")
+        Category(id: 2, name: "新作", basePath: "/new-release/"),
+        Category(id: 3, name: "巨乳", basePath: "/tags/big-tits/"),
+        Category(id: 4, name: "人妻", basePath: "/tags/wife/"),
+        Category(id: 5, name: "Cosplay", basePath: "/tags/Cosplay/"),
+        Category(id: 6, name: "校服", basePath: "/tags/school-uniform/"),
+        Category(id: 7, name: "中出", basePath: "/tags/creampie/")
     ]
 
     static func url(_ path: String) -> URL {
@@ -39,7 +43,9 @@ struct Category: Identifiable, Hashable {
 
     func pagePath(_ page: Int) -> String {
         guard page > 1 else { return basePath }
-        return basePath + "?page=\(page)"
+        // jable 的分页是路径式：/latest-updates/2/ ，不是 ?page=2
+        let base = basePath.hasSuffix("/") ? basePath : basePath + "/"
+        return base + "\(page)/"
     }
 }
 
