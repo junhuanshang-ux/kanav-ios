@@ -8,10 +8,58 @@ struct KanAVApp: App {
 
     init() {
         CrashLogger.install()
+        Self.configureBarAppearance()
 
         // 视频站：静音键打开也要出声
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
         try? AVAudioSession.sharedInstance().setActive(true)
+    }
+
+    /// iOS 15 起 TabView / NavigationView 首次渲染不会自动应用 scrollEdgeAppearance，
+    /// 表现为 tab bar 透明、切一次页才恢复。这里启动时就写死外观。
+    private static func configureBarAppearance() {
+        let barBackground = UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(red: 0.07, green: 0.07, blue: 0.08, alpha: 1)
+                : UIColor(red: 0.97, green: 0.97, blue: 0.98, alpha: 1)
+        }
+        let accent = UIColor(red: 1.0, green: 0.23, blue: 0.36, alpha: 1)
+        let inactive = UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(white: 0.52, alpha: 1)
+                : UIColor(white: 0.50, alpha: 1)
+        }
+
+        let tab = UITabBarAppearance()
+        tab.configureWithOpaqueBackground()
+        tab.backgroundColor = barBackground
+        tab.shadowColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor.white.withAlphaComponent(0.06)
+                : UIColor.black.withAlphaComponent(0.08)
+        }
+
+        for item in [tab.stackedLayoutAppearance, tab.inlineLayoutAppearance, tab.compactInlineLayoutAppearance] {
+            item.normal.iconColor = inactive
+            item.normal.titleTextAttributes = [.foregroundColor: inactive]
+            item.selected.iconColor = accent
+            item.selected.titleTextAttributes = [.foregroundColor: accent]
+        }
+
+        UITabBar.appearance().standardAppearance = tab
+        UITabBar.appearance().scrollEdgeAppearance = tab
+
+        let nav = UINavigationBarAppearance()
+        nav.configureWithOpaqueBackground()
+        nav.backgroundColor = barBackground
+        nav.shadowColor = .clear
+        nav.titleTextAttributes = [.foregroundColor: UIColor.label]
+        nav.largeTitleTextAttributes = [.foregroundColor: UIColor.label]
+
+        UINavigationBar.appearance().standardAppearance = nav
+        UINavigationBar.appearance().compactAppearance = nav
+        UINavigationBar.appearance().scrollEdgeAppearance = nav
+        UINavigationBar.appearance().compactScrollEdgeAppearance = nav
     }
 
     var body: some Scene {
