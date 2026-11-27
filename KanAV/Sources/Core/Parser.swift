@@ -81,10 +81,7 @@ enum Parser {
             guard end > start else { continue }
             let window = ns.substring(with: NSRange(location: start, length: end - start))
 
-            let cover = firstMatch(
-                "(?:data-src|data-original|src)=\"(https?://[^\"]+?\\.(?:jpe?g|png|webp)[^\"]*)\"",
-                in: window
-            ) ?? ""
+            let cover = extractCover(from: window)
 
             var title = firstMatch(
                 "<h6[^>]*class=\"[^\"]*title[^\"]*\"[^>]*>\\s*(?:<a[^>]*>)?(.*?)</",
@@ -108,6 +105,30 @@ enum Parser {
             ))
         }
         return result
+    }
+
+    /// jable 的封面是懒加载，可能落在 data-src / data-original / srcset，
+    /// 也可能没有扩展名、或是相对路径，逐级兜底。
+    private static func extractCover(from window: String) -> String {
+        let patterns = [
+            "(?:data-src|data-original|data-lazy-src)=\"(https?://[^\"]+?\\.(?:jpe?g|png|webp)[^\"]*)\"",
+            "(?:data-src|data-original|data-lazy-src)=\"(https?://[^\"]+)\"",
+            "src=\"(https?://[^\"]+?\\.(?:jpe?g|png|webp)[^\"]*)\"",
+            "srcset=\"([^\"\\s]+)"
+        ]
+
+        for pattern in patterns {
+            guard let raw = firstMatch(pattern, in: window) else { continue }
+            var value = decodeEntities(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+            if value.isEmpty || value.hasPrefix("data:") { continue }
+            if value.hasPrefix("//") {
+                value = "https:" + value
+            } else if value.hasPrefix("/") {
+                value = Site.base + value
+            }
+            if value.hasPrefix("http") { return value }
+        }
+        return ""
     }
 
     /// 列表页是否还有下一页

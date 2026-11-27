@@ -1,4 +1,48 @@
 import SwiftUI
+import UIKit
+
+/// 替代 AsyncImage：带 Referer 拉图，失败/加载中走占位。
+struct RemoteImage: View {
+
+    let url: URL?
+    var contentMode: ContentMode = .fill
+
+    @State private var image: UIImage?
+    @State private var isLoading = false
+
+    var body: some View {
+        Group {
+            if let image = image {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: contentMode)
+            } else {
+                ZStack {
+                    Color.kanCard
+                    if isLoading {
+                        ProgressView().tint(.gray).scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "film")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color.white.opacity(0.25))
+                    }
+                }
+            }
+        }
+        .task(id: url) {
+            guard let url = url else {
+                image = nil
+                return
+            }
+            isLoading = true
+            let loaded = await ImageLoader.shared.image(for: url)
+            await MainActor.run {
+                self.image = loaded
+                self.isLoading = false
+            }
+        }
+    }
+}
 
 /// 封面卡片。封面高度固定，避免不同比例的海报把网格撑得参差不齐。
 struct VideoCard: View {
@@ -21,7 +65,7 @@ struct VideoCard: View {
     private var coverFrame: some View {
         ZStack {
             Color.kanCard
-            cover
+            RemoteImage(url: item.coverURL)
         }
         .frame(maxWidth: .infinity)
         .frame(height: coverHeight)
@@ -34,35 +78,6 @@ struct VideoCard: View {
         .overlay(alignment: .bottomTrailing) {
             durationBadge
         }
-    }
-
-    @ViewBuilder private var cover: some View {
-        if let url = item.coverURL {
-            AsyncImage(url: url, transaction: Transaction(animation: nil)) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-                case .failure:
-                    placeholder
-                case .empty:
-                    ProgressView().tint(.gray)
-                @unknown default:
-                    placeholder
-                }
-            }
-        } else {
-            placeholder
-        }
-    }
-
-    private var placeholder: some View {
-        Image(systemName: "film")
-            .font(.system(size: 20))
-            .foregroundColor(Color.white.opacity(0.25))
     }
 
     @ViewBuilder private var durationBadge: some View {
@@ -87,15 +102,7 @@ struct VideoRow: View {
         HStack(spacing: 10) {
             ZStack {
                 Color.kanCard
-                if let url = item.coverURL {
-                    AsyncImage(url: url, transaction: Transaction(animation: nil)) { phase in
-                        if case .success(let image) = phase {
-                            image.resizable().scaledToFill()
-                        } else {
-                            Color.clear
-                        }
-                    }
-                }
+                RemoteImage(url: item.coverURL)
             }
             .frame(width: 96, height: 54)
             .clipped()
