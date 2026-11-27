@@ -49,6 +49,9 @@ struct PlayerControls: View {
                 .shadow(color: .black.opacity(0.75), radius: 3, x: 0, y: 1)
 
             Spacer(minLength: 4)
+
+            AirPlayButton(tint: UIColor.white.opacity(0.9))
+                .frame(width: 30, height: 26)
         }
         .padding(.horizontal, 10)
         .padding(.top, 6)

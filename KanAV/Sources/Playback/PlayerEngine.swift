@@ -64,6 +64,18 @@ final class PlayerEngine: NSObject, ObservableObject {
     @Published private(set) var selectedAudioID: String?
     @Published private(set) var selectedSubtitleID: String?
 
+    init() {
+        // 记住上次的倍速和画面比例
+        if let saved = UserDefaults.standard.object(forKey: "player.speed") as? Double {
+            speed = saved
+        }
+        if let raw = UserDefaults.standard.string(forKey: "player.gravity"),
+           let saved = AVLayerVideoGravity(rawValue: raw) {
+            gravity = saved
+        }
+    }
+
+
     /// 上层页面拿播放状态
     var onStateChange: ((PlaybackState) -> Void)?
     /// 上层页面拿进度（当前秒, 总秒）
@@ -103,6 +115,8 @@ final class PlayerEngine: NSObject, ObservableObject {
 
         let item = AVPlayerItem(asset: asset)
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
+        // 倍速时保持音调不变（默认会变成「快放」的怪声）
+        item.audioTimePitchAlgorithm = .spectral
         // 只攒 2 秒就起播：既快又不会因为缓冲太薄而频繁卡
         item.preferredForwardBufferDuration = 2
         self.item = item
@@ -186,6 +200,7 @@ final class PlayerEngine: NSObject, ObservableObject {
     }
 
     func setSpeed(_ value: Double) {
+        UserDefaults.standard.set(value, forKey: "player.speed")
         speed = value
         applySpeedIfNeeded()
     }
@@ -200,6 +215,7 @@ final class PlayerEngine: NSObject, ObservableObject {
         case .resizeAspectFill: gravity = .resize
         default: gravity = .resizeAspect
         }
+        UserDefaults.standard.set(gravity.rawValue, forKey: "player.gravity")
     }
 
     func gravityTitle() -> String {

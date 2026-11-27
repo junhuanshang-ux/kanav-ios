@@ -8,6 +8,7 @@ struct LibraryView: View {
     @ObservedObject private var lock = AppLock.shared
 
     @AppStorage("app.theme") private var themeRaw = ThemeMode.system.rawValue
+    @AppStorage("player.autoNext") private var autoNext = true
 
     @State private var isClearing = false
     @State private var clearMessage: String?
@@ -41,6 +42,21 @@ struct LibraryView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
+
+                sectionTitle("播放")
+                card {
+                    Toggle(isOn: $autoNext) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("自动连播")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(Color.kanTextPrimary)
+                            Text("播完后自动接「猜你喜欢」的第一部")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color.kanTextSecondary)
+                        }
+                    }
+                    .toggleStyle(SwitchToggleStyle(tint: Color.kanAccent))
                 }
 
                 sectionTitle("存储")

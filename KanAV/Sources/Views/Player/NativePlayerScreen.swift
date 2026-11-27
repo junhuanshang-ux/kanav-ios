@@ -20,6 +20,8 @@ struct NativePlayerScreen: View {
     @State private var streamURL: URL?
     @State private var recommendations: [VideoItem] = []
     @State private var hideWork: DispatchWorkItem?
+    @AppStorage("player.autoNext") private var autoNext = true
+    @State private var resumeApplied = false
 
     @Environment(\.presentationMode) private var presentationMode
 
@@ -55,6 +57,9 @@ struct NativePlayerScreen: View {
                 onStateChange?(newState)
                 if newState.isPlaying {
                     scheduleHideControls()
+                }
+                if newState == .ended, autoNext, let next = recommendations.first {
+                    play(next)
                 }
             }
     }
@@ -270,8 +275,10 @@ struct NativePlayerScreen: View {
         OrientationSupport.setTabBarHidden(true)
         HistoryStore.shared.record(activeItem)
 
-        engine.onProgress = { current, duration in
+        engine.onProgress = { [weak self] current, duration in
+            guard let self = self else { return }
             onProgress?(current, duration)
+            HistoryStore.shared.updateProgress(current, duration: duration, for: self.activeItem.id)
         }
     }
 
@@ -300,6 +307,7 @@ struct NativePlayerScreen: View {
             engine.load(url: cached.url, referer: cached.referer, autoplay: true)
             isResolving = false
             showControls()
+            scheduleResume(for: target)
             return
         }
 
@@ -332,10 +340,23 @@ struct NativePlayerScreen: View {
             )
             isResolving = false
             showControls()
+            scheduleResume(for: target)
         } catch let error {
             streamURL = nil
             resolveError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             isResolving = false
+        }
+    }
+
+    /// 上次没看完就接着放。等画面就绪再 seek，否则会被忽略。
+    private func scheduleResume(for target: VideoItem) {
+        let saved = HistoryStore.shared.progress(for: target.id)
+        guard saved > 10 else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [self] in
+            guard activeItem.id == target.id else { return }
+            guard engine.duration > 0, saved < engine.duration - 30 else { return }
+            engine.seek(to: saved)
         }
     }
 
