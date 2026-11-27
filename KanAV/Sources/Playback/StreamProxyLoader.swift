@@ -57,9 +57,10 @@ final class StreamProxyLoader: NSObject, AVAssetResourceLoaderDelegate {
               let realURL = Self.realURL(from: url)
         else { return false }
 
-        // 已经取消或完成的请求直接忽略
+        // 已经取消或完成的请求：宣称已接管但什么都不做。
+        // 这里绝不能 return false —— 对自定义 scheme 返回 false 会让 AVFoundation 自己兜底并可能崩溃。
         if loadingRequest.isCancelled || loadingRequest.isFinished {
-            return false
+            return true
         }
 
         var request = URLRequest(url: realURL)

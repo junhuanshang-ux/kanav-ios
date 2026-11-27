@@ -97,8 +97,8 @@ final class PlayerEngine: NSObject, ObservableObject {
         let cookie = Net.cookieHeader(for: url)
 
         // 流代理：接管 m3u8 / 分片 / 密钥，统一带鉴权。
-        // 万一代理在某个片源上出问题，设置里关掉即可回到直连。
-        let useProxy = UserDefaults.standard.object(forKey: "player.useProxy") as? Bool ?? true
+        // 默认关闭 —— 先保证不崩，确认稳定后再在设置里打开。
+        let useProxy = UserDefaults.standard.object(forKey: "player.useProxy") as? Bool ?? false
         let asset: AVURLAsset
         if useProxy {
             let proxyURL = StreamProxyLoader.proxyURL(for: url)

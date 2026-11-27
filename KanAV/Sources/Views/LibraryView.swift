@@ -127,6 +127,28 @@ struct LibraryView: View {
                         Text(lastFetchSummary)
                             .font(.system(size: 10))
                             .foregroundColor(.white.opacity(0.35))
+
+                        Divider().background(Color.white.opacity(0.08))
+
+                        Text("闪退时先重开 App，再点下面导出日志发我。")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        Button {
+                            exportCrashLog()
+                        } label: {
+                            Text(CrashLogger.hasLog ? "导出崩溃日志" : "暂无崩溃日志")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Capsule().fill(CrashLogger.hasLog
+                                                           ? Color.kanAccent
+                                                           : Color.white.opacity(0.08)))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!CrashLogger.hasLog)
                     }
                 }
             }
@@ -184,7 +206,19 @@ struct LibraryView: View {
 
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("kanav-debug.html")
         try? html.write(to: url, atomically: true, encoding: .utf8)
+        share(url)
+    }
 
+    private func exportCrashLog() {
+        let text = CrashLogger.logText
+        guard !text.isEmpty else { return }
+
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("kanav-crash.log")
+        try? text.write(to: url, atomically: true, encoding: .utf8)
+        share(url)
+    }
+
+    private func share(_ url: URL) {
         guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first,
               let root = scene.keyWindow?.rootViewController
         else { return }
