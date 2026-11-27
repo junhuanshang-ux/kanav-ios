@@ -123,8 +123,8 @@ final class PlayerEngine: NSObject, ObservableObject {
 
         let item = AVPlayerItem(asset: asset)
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
-        // 少缓冲一点，起播更快
-        item.preferredForwardBufferDuration = 3
+        // 起播优先：只攒 1.2 秒就开播，明显比默认快
+        item.preferredForwardBufferDuration = 1.2
         self.item = item
         hasEnded = false
         player.replaceCurrentItem(with: item)
@@ -213,7 +213,7 @@ final class PlayerEngine: NSObject, ObservableObject {
     func gravityTitle() -> String {
         switch gravity {
         case .resizeAspect: return "适应"
-        case .resizeAspectFill: return "填充"
+        case .resizeAspectFill: return "铺满"
         case .resize: return "拉伸"
         default: return "适应"
         }

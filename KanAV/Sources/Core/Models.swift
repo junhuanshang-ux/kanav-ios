@@ -3,23 +3,126 @@ import Foundation
 // MARK: - 站点配置
 
 enum Site {
-    /// 站点根地址
     static let base = "https://jable.tv"
 
     static let userAgent =
         "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 
-    /// 顶部分类。路径全部来自站点真实导航（REA 抓取确认）。
-    static let categories: [Category] = [
-        Category(id: 0, name: "最新", basePath: "/latest-updates/"),
-        Category(id: 1, name: "热门", basePath: "/hot/"),
-        Category(id: 2, name: "新作", basePath: "/new-release/"),
-        Category(id: 3, name: "巨乳", basePath: "/tags/big-tits/"),
-        Category(id: 4, name: "人妻", basePath: "/tags/wife/"),
-        Category(id: 5, name: "Cosplay", basePath: "/tags/Cosplay/"),
-        Category(id: 6, name: "校服", basePath: "/tags/school-uniform/"),
-        Category(id: 7, name: "中出", basePath: "/tags/creampie/")
+    /// 首页横向 chips 上直接露出的常用分类
+    static let quickCategories: [Category] = Array(allCategories.prefix(8))
+
+    /// 全部分类，按站点导航分组（路径来自 REA 抓取的真实标签树）
+    static let categoryGroups: [CategoryGroup] = [
+        CategoryGroup(group: "热门", items: [
+            Category(name: "最新", basePath: "/latest-updates/"),
+            Category(name: "热度", basePath: "/hot/"),
+            Category(name: "新作", basePath: "/new-release/")
+        ]),
+        CategoryGroup(group: "衣著", items: [
+            Category(name: "Cosplay", basePath: "/tags/Cosplay/"),
+            Category(name: "制服", basePath: "/tags/school-uniform/"),
+            Category(name: "絲襪", basePath: "/tags/pantyhose/"),
+            Category(name: "黑絲", basePath: "/tags/black-pantyhose/"),
+            Category(name: "吊帶襪", basePath: "/tags/stockings/"),
+            Category(name: "女僕", basePath: "/tags/maid/"),
+            Category(name: "兔女郎", basePath: "/tags/bunny-girl/"),
+            Category(name: "和服", basePath: "/tags/kimono/"),
+            Category(name: "旗袍", basePath: "/tags/cheongsam/"),
+            Category(name: "水着", basePath: "/tags/swimsuit/"),
+            Category(name: "婚紗", basePath: "/tags/wedding-dress/"),
+            Category(name: "眼鏡娘", basePath: "/tags/glasses/"),
+            Category(name: "獸耳", basePath: "/tags/kemonomimi/")
+        ]),
+        CategoryGroup(group: "身材", items: [
+            Category(name: "巨乳", basePath: "/tags/big-tits/"),
+            Category(name: "貧乳", basePath: "/tags/small-tits/"),
+            Category(name: "美腿", basePath: "/tags/beautiful-leg/"),
+            Category(name: "美尻", basePath: "/tags/beautiful-butt/"),
+            Category(name: "白虎", basePath: "/tags/hairless-pussy/"),
+            Category(name: "熟女", basePath: "/tags/mature-woman/"),
+            Category(name: "少女", basePath: "/tags/girl/"),
+            Category(name: "嬌小", basePath: "/tags/dainty/"),
+            Category(name: "長身", basePath: "/tags/tall/"),
+            Category(name: "黑肉", basePath: "/tags/suntan/"),
+            Category(name: "短髮", basePath: "/tags/short-hair/"),
+            Category(name: "紋身", basePath: "/tags/tattoo/")
+        ]),
+        CategoryGroup(group: "交合", items: [
+            Category(name: "中出", basePath: "/tags/creampie/"),
+            Category(name: "口交", basePath: "/tags/blowjob/"),
+            Category(name: "深喉", basePath: "/tags/deep-throat/"),
+            Category(name: "乳交", basePath: "/tags/tit-wank/"),
+            Category(name: "肛交", basePath: "/tags/anal-sex/"),
+            Category(name: "潮吹", basePath: "/tags/squirting/"),
+            Category(name: "顏射", basePath: "/tags/facial/"),
+            Category(name: "接吻", basePath: "/tags/kiss/"),
+            Category(name: "腳交", basePath: "/tags/footjob/")
+        ]),
+        CategoryGroup(group: "玩法", items: [
+            Category(name: "多P", basePath: "/tags/groupsex/"),
+            Category(name: "3P", basePath: "/tags/3p/"),
+            Category(name: "痴漢", basePath: "/tags/chikan/"),
+            Category(name: "露出", basePath: "/tags/outdoor/"),
+            Category(name: "綑綁", basePath: "/tags/bondage/"),
+            Category(name: "調教", basePath: "/tags/tune/"),
+            Category(name: "凌辱", basePath: "/tags/insult/"),
+            Category(name: "按摩", basePath: "/tags/massage/"),
+            Category(name: "泡姬", basePath: "/tags/soapland/"),
+            Category(name: "痴女", basePath: "/tags/chizyo/"),
+            Category(name: "泥醉", basePath: "/tags/crapulence/"),
+            Category(name: "放尿", basePath: "/tags/piss/")
+        ]),
+        CategoryGroup(group: "劇情", items: [
+            Category(name: "NTR", basePath: "/tags/ntr/"),
+            Category(name: "夫目前犯", basePath: "/tags/sex-beside-husband/"),
+            Category(name: "出軌", basePath: "/tags/affair/"),
+            Category(name: "偷拍", basePath: "/tags/private-cam/"),
+            Category(name: "時間停止", basePath: "/tags/time-stop/"),
+            Category(name: "催眠", basePath: "/tags/hypnosis/"),
+            Category(name: "誘惑", basePath: "/tags/temptation/"),
+            Category(name: "年齡差", basePath: "/tags/age-difference/"),
+            Category(name: "童貞", basePath: "/tags/virginity/"),
+            Category(name: "親屬", basePath: "/tags/kinship/"),
+            Category(name: "復仇", basePath: "/tags/avenge/"),
+            Category(name: "黑人", basePath: "/tags/black/")
+        ]),
+        CategoryGroup(group: "角色", items: [
+            Category(name: "人妻", basePath: "/tags/wife/"),
+            Category(name: "OL", basePath: "/tags/ol/"),
+            Category(name: "護士", basePath: "/tags/nurse/"),
+            Category(name: "老師", basePath: "/tags/teacher/"),
+            Category(name: "醫生", basePath: "/tags/doctor/"),
+            Category(name: "空姐", basePath: "/tags/flight-attendant/"),
+            Category(name: "主播", basePath: "/tags/female-anchor/"),
+            Category(name: "偶像", basePath: "/tags/idol/"),
+            Category(name: "家政婦", basePath: "/tags/housewife/"),
+            Category(name: "搜查官", basePath: "/tags/detective/"),
+            Category(name: "未亡人", basePath: "/tags/widow/"),
+            Category(name: "情侶", basePath: "/tags/couple/")
+        ]),
+        CategoryGroup(group: "地點", items: [
+            Category(name: "溫泉", basePath: "/tags/hot-spring/"),
+            Category(name: "健身房", basePath: "/tags/gym-room/"),
+            Category(name: "學校", basePath: "/tags/school/"),
+            Category(name: "電車", basePath: "/tags/tram/"),
+            Category(name: "汽車", basePath: "/tags/car/"),
+            Category(name: "泳池", basePath: "/tags/swimming-pool/"),
+            Category(name: "魔鏡號", basePath: "/tags/magic-mirror/"),
+            Category(name: "圖書館", basePath: "/tags/library/"),
+            Category(name: "洗浴場", basePath: "/tags/bathing-place/"),
+            Category(name: "便利店", basePath: "/tags/store/")
+        ]),
+        CategoryGroup(group: "雜項", items: [
+            Category(name: "處女作", basePath: "/tags/debut-retires/"),
+            Category(name: "感謝祭", basePath: "/tags/thanksgiving/"),
+            Category(name: "綜藝", basePath: "/tags/variety-show/"),
+            Category(name: "4小時以上", basePath: "/tags/more-than-4-hours/"),
+            Category(name: "節日主題", basePath: "/tags/festival/")
+        ])
     ]
+
+    /// 拍平用于查找
+    static let allCategories: [Category] = categoryGroups.flatMap { $0.items }
 
     static func url(_ path: String) -> URL {
         if path.hasPrefix("http"), let u = URL(string: path) { return u }
@@ -36,14 +139,20 @@ enum Site {
 
 // MARK: - 模型
 
+struct CategoryGroup: Identifiable {
+    var id: String { group }
+    let group: String
+    let items: [Category]
+}
+
 struct Category: Identifiable, Hashable {
-    let id: Int
+    var id: String { basePath }
     let name: String
     let basePath: String
 
     func pagePath(_ page: Int) -> String {
         guard page > 1 else { return basePath }
-        // jable 的分页是路径式：/latest-updates/2/ ，不是 ?page=2
+        // jable 分页是路径式：/latest-updates/2/
         let base = basePath.hasSuffix("/") ? basePath : basePath + "/"
         return base + "\(page)/"
     }

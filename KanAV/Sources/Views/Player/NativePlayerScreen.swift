@@ -89,6 +89,8 @@ struct NativePlayerScreen: View {
             PlayerSurface(player: engine.player, gravity: engine.gravity) { layer in
                 pip.attach(layer: layer)
             }
+            // 全屏时让视频层铺到屏幕边缘（控件层仍留在安全区内）
+            .ignoresSafeArea(.all, edges: isFullscreen ? .all : [])
             .transaction { transaction in
                 transaction.animation = nil
                 transaction.disablesAnimations = true
@@ -288,6 +290,15 @@ struct NativePlayerScreen: View {
         isResolving = true
         resolveError = nil
 
+        // 命中缓存直接起播，免掉抓页面 + 解析 + 预检三步
+        if let cached = PlayURLCache.shared.get(target.id) {
+            streamURL = cached.url
+            engine.load(url: cached.url, referer: cached.referer, autoplay: true)
+            isResolving = false
+            showControls()
+            return
+        }
+
         do {
             let pageURL = Site.url(target.playPath)
             // 播放页不弹手动验证（会盖住播放器），验证不过直接报错
@@ -303,6 +314,7 @@ struct NativePlayerScreen: View {
             guard let found = source else { throw KanError.noPlayURL }
 
             let resolved = try await StreamResolver.resolve(found.url, referer: pageURL.absoluteString)
+            PlayURLCache.shared.set(target.id, url: resolved.url, referer: resolved.referer)
 
             streamURL = resolved.url
             engine.load(

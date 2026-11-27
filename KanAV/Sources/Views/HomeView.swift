@@ -2,7 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
 
-    @State private var selected: Category = Site.categories[0]
+    @State private var selected: Category = Site.quickCategories[0]
+    @State private var showCategoryPicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -11,33 +12,111 @@ struct HomeView: View {
                 .id(selected.id)
         }
         .background(Color.kanBackground.ignoresSafeArea())
-        .navigationTitle("KanAV")
+        .navigationTitle("博客")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showCategoryPicker) {
+            CategoryPicker(selected: $selected, isPresented: $showCategoryPicker)
+        }
     }
 
     private var categoryBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(Site.categories) { category in
-                    Button {
-                        guard selected.id != category.id else { return }
-                        selected = category
-                    } label: {
-                        Text(category.name)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(selected.id == category.id ? .white : Color.white.opacity(0.55))
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 7)
-                            .background(
-                                Capsule().fill(selected.id == category.id ? Color.kanAccent : Color.kanCard)
-                            )
-                    }
-                    .buttonStyle(.plain)
+                ForEach(Site.quickCategories) { category in
+                    categoryChip(category)
                 }
+
+                Button {
+                    showCategoryPicker = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("更多")
+                        Image(systemName: "chevron.down").font(.system(size: 10, weight: .bold))
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(Color.white.opacity(0.7))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(Capsule().fill(Color.kanCard))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
         }
+    }
+
+    private func categoryChip(_ category: Category) -> some View {
+        Button {
+            guard selected.id != category.id else { return }
+            selected = category
+        } label: {
+            Text(category.name)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(selected.id == category.id ? .white : Color.white.opacity(0.55))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(
+                    Capsule().fill(selected.id == category.id ? Color.kanAccent : Color.kanCard)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - 全部分类
+
+struct CategoryPicker: View {
+
+    @Binding var selected: Category
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationView {
+            List {
+                ForEach(Site.categoryGroups) { group in
+                    Section {
+                        ForEach(group.items) { item in
+                            Button {
+                                selected = item
+                                isPresented = false
+                            } label: {
+                                HStack {
+                                    Text(item.name)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.white)
+                                    Spacer()
+                                    if item.id == selected.id {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .foregroundColor(Color.kanAccent)
+                                    }
+                                }
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } header: {
+                        Text(group.group)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(Color.white.opacity(0.5))
+                    }
+                }
+            }
+            .listStyle(.plain)
+            .background(Color.kanBackground.ignoresSafeArea())
+            .navigationTitle("全部分类")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("完成") {
+                        isPresented = false
+                    }
+                    .foregroundColor(Color.kanAccent)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }
 
