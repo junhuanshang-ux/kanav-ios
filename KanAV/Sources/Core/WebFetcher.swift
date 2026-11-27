@@ -118,7 +118,7 @@ final class WebFetcher: NSObject, ObservableObject {
                 return
             }
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 self.polling(deadline: deadline, manualPhase: manualPhase, attempt: attempt + 1)
             }
         }

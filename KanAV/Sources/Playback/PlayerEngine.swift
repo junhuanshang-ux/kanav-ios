@@ -122,13 +122,13 @@ final class PlayerEngine: NSObject, ObservableObject {
 
         let item = AVPlayerItem(asset: asset)
         item.canUseNetworkResourcesForLiveStreamingWhilePaused = true
-        // 缓冲策略：少攒就起播（快速响应），但保留足够余量应付拖动
-        item.preferredForwardBufferDuration = 6
+        // 只攒 2 秒就起播：既快又不会因为缓冲太薄而频繁卡
+        item.preferredForwardBufferDuration = 2
         self.item = item
         hasEnded = false
         player.replaceCurrentItem(with: item)
-        // 关键：不要为了「防卡顿」而等到缓冲充足才播，那样起播会慢好几秒
-        player.automaticallyWaitsToMinimizeStalling = false
+        // 保留默认的「等缓冲」策略：上一版改成 false 后起播快了但拖动/卡顿时会停住播不动
+        player.automaticallyWaitsToMinimizeStalling = true
 
         observe(item: item)
         addTimeObserver()
@@ -178,12 +178,22 @@ final class PlayerEngine: NSObject, ObservableObject {
 
     func seek(to seconds: Double) {
         guard duration > 0 || item != nil else { return }
+
+        // 记住 seek 前是不是在播，完成后再把播放状态还回去，
+        // 否则 AVPlayer 会停在 paused（表现就是「拖一下就暂停」）
+        let wasPlaying = player.timeControlStatus == .playing
         let clamped = max(0, min(seconds, max(duration - 0.15, 0)))
         let time = CMTime(seconds: clamped, preferredTimescale: 600)
-        // 宽松容差：直接跳到最近关键帧，拖动才跟手。精确 seek 每帧都要解码，会明显卡。
-        player.seek(to: time, toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity) { [weak self] _ in
+
+        player.seek(to: time, toleranceBefore: .positiveInfinity, toleranceAfter: .positiveInfinity) { [weak self] finished in
             DispatchQueue.main.async {
-                self?.currentTime = clamped
+                guard let self = self else { return }
+                self.currentTime = clamped
+                if finished, wasPlaying {
+                    self.player.play()
+                    self.applySpeedIfNeeded()
+                    self.refreshState()
+                }
             }
         }
         currentTime = clamped

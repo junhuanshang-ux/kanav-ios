@@ -24,7 +24,7 @@ enum StreamResolver {
         if let cookie = Net.cookieHeader(for: raw) {
             request.setValue(cookie, forHTTPHeaderField: "Cookie")
         }
-        request.timeoutInterval = 6
+        request.timeoutInterval = 4
 
         guard let (data, response) = try? await URLSession.shared.data(for: request) else {
             throw KanError.badStatus(-1)
